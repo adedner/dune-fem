@@ -42,7 +42,7 @@ namespace Dune
       {
         typedef typename Space :: GridPartType GridPartType;
         typedef CachingLumpingQuadrature< GridPartType, 0 > InteriorQuadratureType;
-
+        static constexpr bool isLumpingQuadrature = true ;
         // not needed, since lumping is only on element terms
         typedef CachingQuadrature< GridPartType, 1, Capabilities::DefaultQuadrature< Space > :: template DefaultQuadratureTraits  > SurfaceQuadratureType;
       };
@@ -203,6 +203,9 @@ namespace Dune
 
       typedef typename BaseType::GridPartType GridPartType;
 
+      typedef typename BaseType :: GalerkinOperatorImplType  GalerkinOperatorImplType;
+      typedef typename BaseType :: MassOperatorImplType      MassOperatorImplType;
+
       template< class... Args >
       explicit MassLumpingDifferentiableOperator ( const DomainDiscreteFunctionSpaceType &dSpace,
                                                    const RangeDiscreteFunctionSpaceType &rSpace,
@@ -293,11 +296,13 @@ namespace Dune
 
         auto doAssemble = [this, &u, &jOp, &mutex] ()
         {
+          std::tuple< const GalerkinOperatorImplType&, const MassOperatorImplType& > ops( this->impl(), this->mass() );
+          this->impl().assemble( u, jOp, this->iterators_, ops, mutex );
           // assemble Jacobian, same as GalerkinOperator
-          this->impl().assemble( u, jOp, this->iterators_, mutex );
+          //this->impl().assemble( u, jOp, this->iterators_, mutex );
 
           // add mass lumped terms
-          this->mass().assemble( u, jOp, this->iterators_, mutex );
+          //this->mass().assemble( u, jOp, this->iterators_, mutex );
         };
 
         try {
@@ -316,10 +321,12 @@ namespace Dune
         {
           // redo matrix assembly since it failed
           jOp.clear();
+          std::tuple< const GalerkinOperatorImplType&, const MassOperatorImplType& > ops( this->impl(), this->mass() );
+          this->impl().assemble( u, jOp, this->iterators_, ops, mutex );
           // add galerkin terms
-          impl().assemble( u, jOp, iterators_ );
+          //impl().assemble( u, jOp, iterators_ );
           // add mass lumped terms
-          mass().assemble( u, jOp, this->iterators_, mutex );
+          //mass().assemble( u, jOp, this->iterators_, mutex );
 
           // update number of interior elements
           gridSizeInterior_ = impl().gridSizeInterior();

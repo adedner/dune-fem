@@ -80,6 +80,7 @@ namespace Dune
       template <class Space>
       struct DefaultGalerkinOperatorQuadratureSelector
       {
+        static constexpr bool isLumpingQuadrature = false;
         typedef typename Space :: GridPartType GridPartType;
         typedef CachingQuadrature< GridPartType, 0, Capabilities::DefaultQuadrature< Space > :: template DefaultQuadratureTraits  > InteriorQuadratureType;
         typedef CachingQuadrature< GridPartType, 1, Capabilities::DefaultQuadrature< Space > :: template DefaultQuadratureTraits  > SurfaceQuadratureType;
@@ -297,6 +298,36 @@ namespace Dune
             } );
         }
 
+        template < int i >
+        struct RangeVectorDiagonal
+        {
+          std::vector< RangeValueVectorType >& rangeValues_;
+          RangeVectorDiagonal( std::vector< RangeValueVectorType >& rangeValues )
+            : rangeValues_( rangeValues )
+          {}
+
+          auto& operator []( const size_t row )
+          {
+            return std::get< i >( rangeValues_[ row ] )[ row ];
+          }
+
+          const auto operator []( const size_t row ) const
+          {
+            return std::get< i >( rangeValues_[ row ] )[ row ];
+          }
+
+          size_t size() const { return rangeValues_.size(); }
+        };
+
+        template <class W, class Quadrature>
+        static void axpyQuadratureDiagonal( W& w, const Quadrature& quadrature, std::vector< RangeValueVectorType >& rangeVector )
+        {
+          Hybrid::forEach( RangeValueIndices(), [ &w, &quadrature, &rangeVector ] ( auto i ) {
+              RangeVectorDiagonal< i > rv( rangeVector );
+              w.axpyQuadrature( quadrature, rv );
+            } );
+        }
+
       public:
         // interior integral
 
@@ -330,8 +361,11 @@ namespace Dune
           integrands().unbind();
         }
 
+
         template< class U, class J >
-        void addLinearizedInteriorIntegral ( const U &u, DomainValueVectorType &phi, J &j ) const
+        void addLinearizedInteriorIntegral ( const U &u,
+                                             //DomainValueVectorType &phi,
+                                             J &j ) const
         {
           if( !integrands().init( u.entity() ) )
             return;
@@ -341,6 +375,7 @@ namespace Dune
           const auto &rangeBasis = j.rangeBasisFunctionSet();
 
           typedef typename QuadratureSelector< typename J::RangeSpaceType > :: InteriorQuadratureType  InteriorQuadratureType;
+          static constexpr bool isLumpingQuadrature = QuadratureSelector< typename J::RangeSpaceType > :: isLumpingQuadrature;
           const InteriorQuadratureType quadrature( u.entity(), interiorQuadratureOrder( maxOrder( u, domainBasis, rangeBasis )) );
           const size_t domainSize = domainBasis.size();
           const size_t quadNop = quadrature.nop();
@@ -371,12 +406,46 @@ namespace Dune
             }
           }
 
-          // add to local matrix for all quadrature points and basis functions
-          for( std::size_t col = 0; col < domainSize; ++col )
+          /* this only works for LumpingQuadrature and Lagrange Space */
+          if constexpr ( isLumpingQuadrature )
           {
-            LocalMatrixColumn< J > jCol( j, col );
-            axpyQuadrature( jCol, quadrature, rangeValues[ col ] );
+            // only the diagonal is needed here
+            Hybrid::forEach( RangeValueIndices(), [ &j, &quadNop, &rangeValues ] ( auto i ) {
+                const int dimR = std::get< i >( rangeValues[ 0 ] )[ 0 ].size();
+                for( std::size_t col = 0, qp = 0; qp < quadNop; ++qp )
+                {
+                  for( int d=0; d<dimR; ++d, ++col )
+                  {
+                    const auto& vec = std::get< i >( rangeValues[ col ] )[ qp ];
+                    j[ col ][ col ] += vec[ d ];
+                  }
+                }
+              } );
           }
+          else
+          {
+            // add to local matrix for all quadrature points and basis functions
+            for( std::size_t col = 0; col < domainSize; ++col )
+            {
+              LocalMatrixColumn< J > jCol( j, col );
+              axpyQuadrature( jCol, quadrature, rangeValues[ col ] );
+            }
+          }
+          /*
+          if( isLumpingQuadrature )
+          {
+            std::cout << "RangeValues: " << std::endl;
+            for( std::size_t col = 0; col < domainSize; ++col )
+            {
+              const auto& vec = std::get< 0 >(rangeValues[ col ]);
+              for( const auto& val : vec )
+                std::cout << val << ", ";
+              std::cout << std::endl;
+            }
+
+            j.print( std::cout );
+          }
+          */
           integrands().unbind();
         }
 
@@ -1012,9 +1081,17 @@ namespace Dune
           }
         };
 
-        template< class GridFunction, class JacobianOperator, class Iterators, class Functor >
+      public:
+        void prepareDomainValueVector( const size_t maxNumLocalDofs ) const
+        {
+          phi_= makeDomainValueVector( maxNumLocalDofs );
+        }
+
+        template< class GridFunction, class JacobianOperator, class Iterators, class Functor, class OpImpl >
         void assemble ( const GridFunction &u, JacobianOperator &jOp, const Iterators& iterators,
-                        Functor& addLocalMatrix, std::false_type ) const
+                        Functor& addLocalMatrix,
+                        const OpImpl& ops,
+                        std::false_type ) const
         {
           typedef typename JacobianOperator::DomainSpaceType  DomainSpaceType;
           typedef typename JacobianOperator::RangeSpaceType   RangeSpaceType;
@@ -1022,10 +1099,20 @@ namespace Dune
           typedef TemporaryLocalMatrix< DomainSpaceType, RangeSpaceType > TemporaryLocalMatrixType;
 
           const std::size_t maxNumLocalDofs = jOp.domainSpace().blockMapper().maxNumDofs() * jOp.domainSpace().localBlockSize;
-          DomainValueVectorType phi = makeDomainValueVector( maxNumLocalDofs );
+          typedef std::make_index_sequence< std::tuple_size< OpImpl >::value > N;
+            Hybrid::forEach( N(), [ &maxNumLocalDofs, &ops ] ( auto i ) {
+                std::get< i >( ops ).prepareDomainValueVector( maxNumLocalDofs );
+              } );
+          //DomainValueVectorType phi = makeDomainValueVector( maxNumLocalDofs );
 
           Dune::Fem::ConstLocalFunction< GridFunction > uLocal( u );
 
+          double intTime = 0.;
+          double bndTime = 0.;
+          double addTime = 0.;
+          double finTime = 0.;
+
+          Dune::Timer overall;
           gridSizeInterior_ = 0;
           // possible threaded grid walk here
           const auto end = iterators.end();
@@ -1041,26 +1128,50 @@ namespace Dune
             TemporaryLocalMatrixType& jOpLocal = addLocalMatrix.bind(entity, entity );
 
             if( integrands().hasInterior() )
-              addLinearizedInteriorIntegral( uLocal, phi, jOpLocal );
+            {
+              Dune::Timer timer ;
+              typedef std::make_index_sequence< std::tuple_size< OpImpl >::value > N;
+              Hybrid::forEach( N(), [ &uLocal, &jOpLocal, &ops] ( auto i ) {
+                  std::get< i >( ops ).addLinearizedInteriorIntegral( uLocal, jOpLocal );
+                } );
+              //addLinearizedInteriorIntegral( uLocal, phi, jOpLocal );
+              intTime += timer.elapsed();
+            }
 
+            /*
             if( integrands().hasBoundary() && entity.hasBoundaryIntersections() )
             {
+              Dune::Timer timer ;
               for( const auto &intersection : intersections( gridPart(), entity ) )
               {
                 if( intersection.boundary() )
                   addLinearizedBoundaryIntegral( intersection, uLocal, phi, jOpLocal );
               }
-            }
 
-            addLocalMatrix.unbind(jOpLocal);
+              bndTime += timer.elapsed();
+            }
+            */
+
+            {
+              Dune::Timer timer ;
+              addLocalMatrix.unbind(jOpLocal);
+              addTime += timer.elapsed();
+            }
           }
-          addLocalMatrix.finalize();
+          {
+            Dune::Timer timer ;
+            addLocalMatrix.finalize();
+            finTime += timer.elapsed();
+          }
+
+          //std::cout << "Assemble: overall " << overall.elapsed() << " | int " << intTime << " | bnd " << bndTime << " | add " << addTime << " | fin " << finTime << std::endl;
         }
 
-        template< class GridFunction, class JacobianOperator, class Iterators, class Functor >
+        template< class GridFunction, class JacobianOperator, class Iterators, class Functor, class OpImpl >
         void assemble ( const GridFunction &u, JacobianOperator &jOp, const Iterators& iterators,
-                        Functor& addLocalMatrix, std::true_type ) const
+                        Functor& addLocalMatrix, const OpImpl& ops, std::true_type ) const
         {
+#if 0
           typedef typename JacobianOperator::DomainSpaceType  DomainSpaceType;
           typedef typename JacobianOperator::RangeSpaceType   RangeSpaceType;
 
@@ -1090,7 +1201,9 @@ namespace Dune
             TemporaryLocalMatrixType& jOpInIn = addLocalMatrix.bind(inside, inside );
 
             if( integrands().hasInterior() )
-              addLinearizedInteriorIntegral( uIn, phiIn, jOpInIn );
+            {
+              //addLinearizedInteriorIntegral( uIn, phiIn, jOpInIn );
+            }
 
             for( const auto &intersection : intersections( gridPart(), inside ) )
             {
@@ -1128,11 +1241,14 @@ namespace Dune
             addLocalMatrix.unbind(jOpInIn);
           }
           addLocalMatrix.finalize();
+#endif
         }
 
-        template< class GridFunction, class JacobianOperator, class Iterators, class Functor >
+        template< class GridFunction, class JacobianOperator, class Iterators, class Functor, class OpImpl >
         void assemble ( const GridFunction &u, JacobianOperator &jOp, const Iterators& iterators,
-                        Functor& addLocalMatrix, int ) const
+                        Functor& addLocalMatrix,
+                        const OpImpl& ops,
+                        int ) const
         {
           typedef typename JacobianOperator::RangeSpaceType RangeSpaceType;
 
@@ -1145,17 +1261,25 @@ namespace Dune
           defaultSurfaceOrder_  = [] (const int order) { return Capabilities::DefaultQuadrature< RangeSpaceType >::surfaceOrder(order); };
 
           if( integrands().hasSkeleton() )
-            assemble( u, jOp, iterators, addLocalMatrix, std::true_type() );
+            assemble( u, jOp, iterators, addLocalMatrix, ops, std::true_type() );
           else
-            assemble( u, jOp, iterators, addLocalMatrix, std::false_type() );
+            assemble( u, jOp, iterators, addLocalMatrix, ops, std::false_type() );
         }
 
       public:
+        template< class GridFunction, class JacobianOperator, class Iterators, class OpImpl >
+        void assemble ( const GridFunction &u, JacobianOperator &jOp, const Iterators& iterators, const OpImpl& ops, std::shared_mutex& mtx) const
+        {
+          AddLocalAssembleLocked<JacobianOperator> addLocalAssemble( jOp, mtx, iterators);
+          assemble( u, jOp, iterators, addLocalAssemble, ops, 10 );
+        }
+
         template< class GridFunction, class JacobianOperator, class Iterators >
         void assemble ( const GridFunction &u, JacobianOperator &jOp, const Iterators& iterators, std::shared_mutex& mtx) const
         {
           AddLocalAssembleLocked<JacobianOperator> addLocalAssemble( jOp, mtx, iterators);
-          assemble( u, jOp, iterators, addLocalAssemble, 10 );
+          std::tuple < ThisType > ops( *this );
+          assemble( u, jOp, iterators, addLocalAssemble, ops, 10 );
           #if 0 // print information about how many times a lock was used during assemble
           std::lock_guard guard ( mtx );
           std::cout << MPIManager::thread() << " : "
@@ -1215,6 +1339,7 @@ namespace Dune
         unsigned int interiorQuadOrder_;
         unsigned int surfaceQuadOrder_;
 
+        mutable DomainValueVectorType phi_;
         mutable std::vector< RangeValueVectorType > rangeValues_;
         mutable RangeValueVectorType   values_;
         mutable DomainValueVectorType  basisValues_;
