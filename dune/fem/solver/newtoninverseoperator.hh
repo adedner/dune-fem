@@ -145,6 +145,15 @@ namespace Dune
         verbose_ = verb ? 1 : 0;
       }
 
+      // allow to override the automatic choice of nonlinear or linear solver to
+      // force nonlinear all the time
+      virtual bool forceNonLinear () const
+      {
+        bool v = false;
+        v = parameter_.getValue< bool >(keyPrefix_ +  "forcenonlinear", v );
+        return v;
+      }
+
       virtual int maxIterations () const
       {
         if(maxIterations_ < 0)
@@ -320,13 +329,6 @@ namespace Dune
 
       typedef std::function< bool ( const RangeFunctionType &w, const RangeFunctionType &dw, double residualNorm ) > ErrorMeasureType;
 
-      /** constructor
-       *
-       *  \param[in]  jInv       linear inverse operator (will be move constructed)
-       *
-       *  \note The tolerance is read from the paramter
-       *        <b>fem.solver.newton.tolerance</b>
-       */
 
       /** constructor
        *
@@ -336,10 +338,10 @@ namespace Dune
        *  \note The tolerance is read from the paramter
        *        <b>fem.solver.newton.tolerance</b>
        */
-
       // main constructor
       NewtonInverseOperator ( LinearInverseOperatorType jInv, const DomainFieldType &epsilon, const ParameterType &parameter )
         : verbose_( parameter.verbose() ),
+          forceNonLinear_( parameter.forceNonLinear() ),
           maxLineSearchIterations_( parameter.maxLineSearchIterations() ),
           jInv_( std::move( jInv ) ),
           parameter_(parameter),
@@ -362,12 +364,6 @@ namespace Dune
        *  \note The tolerance is read from the paramter
        *        <b>fem.solver.newton.tolerance</b>
        */
-      /*
-      explicit NewtonInverseOperator ( const ParameterType &parameter )
-        : NewtonInverseOperator( parameter.tolerance(), parameter )
-      {}
-      */
-
       explicit NewtonInverseOperator ( const ParameterType &parameter = ParameterType( Parameter::container() ) )
         : NewtonInverseOperator( parameter.tolerance(), parameter )
       {
@@ -376,7 +372,8 @@ namespace Dune
 
       /** constructor
        *
-       *  \param[in]  epsilon  tolerance for norm of residual
+       *  \param[in]  epsilon     tolerance for norm of residual
+       *  \param[in]  parameter   parameter set for solver config.
        */
       NewtonInverseOperator ( const DomainFieldType &epsilon, const ParameterType &parameter )
         : NewtonInverseOperator(
@@ -384,19 +381,16 @@ namespace Dune
             epsilon, parameter )
       {}
 
+      /** constructor
+       *
+       *  \param[in]  epsilon     tolerance for norm of residual
+       *  \param[in]  parameter   parameter set for solver config.
+       */
       NewtonInverseOperator ( const DomainFieldType &epsilon,
                               const ParameterReader &parameter = Parameter::container() )
         : NewtonInverseOperator( epsilon, ParameterType( parameter ) )
       {}
 
-
-      /** constructor
-       *
-       *  \param[in]  op       operator to invert
-       *
-       *  \note The tolerance is read from the paramter
-       *        <b>fem.solver.newton.tolerance</b>
-       */
 
       void setErrorMeasure ( ErrorMeasureType finished ) { finished_ = std::move( finished ); }
 
@@ -526,6 +520,7 @@ namespace Dune
       const PreconditionerType* preconditioner_ = nullptr;
 
       const bool verbose_;
+      const bool forceNonLinear_;
       const int maxLineSearchIterations_;
 
       mutable DomainFieldType delta_;
@@ -553,6 +548,9 @@ namespace Dune
     {
       assert( op_ );
       std::fill(timing_.begin(), timing_.end(), 0.0 );
+
+      // obtain information about operator to invert
+      const bool nonLinear = op_->nonLinear() || forceNonLinear_ ;
 
       Dune::Timer allTimer;
       DomainFunctionType residual( u );
@@ -598,6 +596,7 @@ namespace Dune
           break;
         jInv_.setMaxIterations( parameter_.maxLinearIterations() - linearIterations_ );
 
+        // compute increment
         dw.clear();
         jInv_( residual, dw );
         if (jInv_.iterations() < 0) // iterations are negative if solver didn't converge
@@ -605,15 +604,27 @@ namespace Dune
           linearIterations_ = jInv_.iterations();
           break;
         }
-        linearIterations_ += jInv_.iterations();
-        w -= dw;
 
+        // update iterate
+        w -= dw;
+        linearIterations_ += jInv_.iterations();
+
+        // for linear problems we are done here
+        if( ! nonLinear)
+        {
+          break;
+        }
+
+        // compute new residual
         (*op_)( w, residual );
         residual -= u;
+
+        // new delta is computed in lineSearch
         int ls = lineSearch(w,dw,u,residual);
         stepCompleted_ = ls >= 0;
         updateLinearTolerance();
         ++iterations_;
+
         if( newtonVerbose )
           std::cout << "Newton iteration " << iterations_ << ": |residual| = " << delta_ << std::flush;
         // if ( (ls==1 && finished_(w, dw, delta_)) || !converged())
