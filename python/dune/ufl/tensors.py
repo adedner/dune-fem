@@ -72,7 +72,7 @@ class ExprTensor:
 
     def __add__(self, other):
         if not isinstance(other, ExprTensor):
-            raise Exception('Cannot add ' + type(other) + ' to ' + type(self) + '.')
+            raise Exception('Cannot add ' + str(type(other)) + ' to ' + str(type(self)) + '.')
         if other.shape != self.shape:
             raise Exception('Cannot add tensors of different shape.')
         return ExprTensor(self.shape, apply(lambda u, v: u + v, self.shape, self.data, other.data))

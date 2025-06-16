@@ -103,9 +103,11 @@ class MultiLinearExprSplitter(Transformer):
 
     def max_value(self, expr, left, right):
         result = dict()
+        tensor = ExprTensor(tuple())
+        tensor[tuple()] = expr
         if list(left.keys()) != [self.empty] or list(right.keys()) != [self.empty]:
             raise Exception('Linear arguments may not occur in maximum.')
-        return { self.empty: expr }
+        return { self.empty: tensor }
 
     def min_value(self, expr, left, right):
         result = dict()
