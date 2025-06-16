@@ -352,3 +352,5 @@ def _linear(operator, ubar=None,parameters=None,affineShift=False):
 def linear(operator, ubar=None,parameters=None):
     deprecated("dune.fem.operator.linear is deprecated use the ``linear`` method on the scheme/operator  instead.")
     return _linear(operator,ubar,parameters)
+def linearOperator(rangeSpace,domainSpace, parameters=None):
+    return _linear([rangeSpace,domainSpace],ubar=None,parameters=parameters)
