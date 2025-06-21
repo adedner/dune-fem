@@ -140,7 +140,6 @@ namespace LinearSolver
 
     std::vector< FieldType > global_dot( m+1, FieldType(0) );
 
-    // relative or absolute tolerance
     double _tolerance = tolerance;
     if (toleranceCriteria == ToleranceCriteria::relative)
     {
@@ -168,12 +167,14 @@ namespace LinearSolver
         _tolerance *= res;
       }
 
+      assert(res == res);
       if (os)
       {
         (*os) << "Fem::GMRES outer iteration : " << res << std::endl;
       }
 
-      if (res < _tolerance) break;
+      // make sure this also works if reisual is 0
+      if (res <= _tolerance*(1+1e-15)) break;
 
       g[0] = -res;
       for(int i=1; i<=m; i++) g[i] = 0.0;
@@ -234,6 +235,7 @@ namespace LinearSolver
         rotate(1, &H(j+1,j), &H(j,j), c[j], s[j]);
         rotate(1, &g[j+1], &g[j], c[j], s[j]);
 
+        assert(g[j+1] == g[j+1]);
         if ( os )
         {
           (*os) << "Fem::GMRES it: " << iterations << " : " <<  std::abs(g[j+1]) << std::endl;
