@@ -233,6 +233,10 @@ class MixedFunctionSpace(ufl.MixedFunctionSpace):
 
 def isNumber(x):
     try:
+        return len(x)<0
+    except:
+        pass
+    try:
         return 0 == x*0
     except:
         return False

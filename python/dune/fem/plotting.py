@@ -168,6 +168,7 @@ def _plotPointData(fig, grid, solution, level=0, gridLines="black",
                     cbar = pyplot.colorbar(**cbar, fraction=0.046, pad=0.04)
                     cbar.ax.tick_params(labelsize=10)
         if contours is not None:
+            contours.sort()
             pyplot.tricontour(triangulation, data, levels=contours,
                     colors=contourColor, linewidths=contourWidth)
 
