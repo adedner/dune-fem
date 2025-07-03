@@ -108,15 +108,18 @@ namespace Dune
       typedef typename GeometryType::GlobalCoordinate GlobalCoordinateType;
 
       explicit GridEntitySearch ( const GridPartType &gridPart )
-      : hierarchicSearch_( gridPart.grid(), gridPart.indexSet() )
+      : gridPart_( gridPart ),
+        hierarchicSearch_( gridPart.grid(), gridPart.indexSet() )
       {}
 
       EntityType operator() ( const GlobalCoordinateType &x ) const
       {
-        return hierarchicSearch_.template findEntity< partition >( x );
+        // convert grid entity to grid part entity, since the types might differ
+        return gridPart_.convert( hierarchicSearch_.template findEntity< partition >( x ) );
       }
 
-    private:
+    protected:
+      const GridPartType& gridPart_;
       Dune::HierarchicSearch< typename GridPartType::GridType, typename GridPartType::IndexSetType > hierarchicSearch_;
     };
 
