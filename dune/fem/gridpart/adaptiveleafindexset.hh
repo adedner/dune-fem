@@ -556,32 +556,52 @@ namespace Dune
       //  index methods
       //  --index
       ///////////////////////////////////////////////////////
-      //! \copydoc Dune::Fem::IndexSet::size */
+      //! \copydoc Dune::Fem::IndexSet::index */
       template< class Entity >
       IndexType index ( const Entity &entity ) const
       {
-        return index< Entity :: codimension >( entity );
+        static const int codim = Entity::codimension ;
+        return indexImpl< codim >( gridEntity( entity ) );
       }
 
-      //! \copydoc Dune::Fem::IndexSet::size */
+      //! \copydoc Dune::Fem::IndexSet::index */
       template< int codim >
       IndexType
       index ( const typename GridPartType::template Codim< codim >::EntityType &entity ) const
       {
-        if( codimAvailable( codim ) )
-        {
-          if( (codim != 0) && ! codimUsed( codim ) )
-            setupCodimSet< codim >(std::integral_constant<bool,Dune::Capabilities::hasEntity < GridType, codim > :: v>());
+        return indexImpl< codim >( gridEntity( entity ) );
+      }
 
-          return codimLeafSet( codim ).index( gridEntity( entity ) );
+    protected:
+      //! \copydoc Dune::Fem::IndexSet::index */
+      template< int codim >
+      IndexType
+      indexImpl ( const typename GridType::template Codim< codim >::Entity &grdEntity ) const
+      {
+        // element indices are always present
+        if constexpr ( codim == 0 )
+        {
+          assert( codimAvailable( codim ) );
+          return codimLeafSet( codim ).index( grdEntity );
         }
         else
         {
-          DUNE_THROW( NotImplemented, (name() + " does not support indices for codim = ") << codim );
-          return -1;
+          if( codimAvailable( codim ) )
+          {
+            if( ! codimUsed( codim ) )
+              setupCodimSet< codim >(std::integral_constant<bool,Dune::Capabilities::hasEntity < GridType, codim > :: v>());
+
+            return codimLeafSet( codim ).index( grdEntity );
+          }
+          else
+          {
+            DUNE_THROW( NotImplemented, (name() + " does not support indices for codim = ") << codim );
+            return -1;
+          }
         }
       }
 
+    public:
       /* \brief return index for intersection */
       IndexType index ( const IntersectionType &intersection ) const
       {
