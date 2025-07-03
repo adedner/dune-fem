@@ -161,6 +161,8 @@ int main ( int argc, char **argv )
     std::cout << "Number of DOFs tupleDF first component: " << tupleDF.template subDiscreteFunction< 0 >().size() << std::endl;
     std::cout << "Number of DOFs tupleDF second component: " << tupleDF.template subDiscreteFunction< 1 >().size() << std::endl;
 
+    /*
+     * this does no longer work with the overloaded filtered entity *
     typedef Dune::Fem::TupleDiscreteFunction< FilteredDiscreteFunctionType, HostDiscreteFunctionType > MixedTupleDiscreteFunctionType;
     typedef typename MixedTupleDiscreteFunctionType::DiscreteFunctionSpaceType MixedTupleDiscreteSpaceType;
     MixedTupleDiscreteSpaceType mixedTupleSpace(
@@ -173,6 +175,7 @@ int main ( int argc, char **argv )
     std::cout << "Number of DOFs mixedTupleDF : " << mixedTupleDF.size() << std::endl;
     std::cout << "Number of DOFs mixedTupleDF first component: " << mixedTupleDF.template subDiscreteFunction< 0 >().size() << std::endl;
     std::cout << "Number of DOFs mixedTupleDF second component: " << mixedTupleDF.template subDiscreteFunction< 1 >().size() << std::endl;
+    */
   }
   catch( Dune::Exception &e )
   {
