@@ -139,21 +139,25 @@ namespace Dune
       template< class Intersection >
       bool intersectionBoundary( const Intersection & intersection ) const
       {
-        return BoundaryIdProviderType::boundaryId( intersection );
+        return true; // BoundaryIdProviderType::boundaryId( intersection );
       }
 
       //! \brief returns the boundary id for an intersection
       template< class Intersection >
       int intersectionBoundaryId ( const Intersection & intersection ) const
       {
-        return BoundaryIdProviderType::boundaryId( intersection );
+        // return BoundaryIdProviderType::boundaryId( intersection );
+        return ( intersection.boundary() ?
+                 BoundaryIdProviderType::boundaryId( intersection ) :
+                 tags_[ indexSet_.index( intersection.outside() ) ] );
       }
 
       //! \brief returns true if for an intersection a neighbor exsits
       template< class Intersection >
       bool intersectionNeighbor ( const Intersection & intersection ) const
       {
-        return intersection.neighbor();
+        // return intersection.neighbor();
+        return contains( intersection.outside() );
       }
 
     protected:
