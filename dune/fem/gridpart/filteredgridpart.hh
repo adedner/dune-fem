@@ -20,7 +20,7 @@
 #include <dune/fem/gridpart/filteredgridpart/intersection.hh>
 #include <dune/fem/gridpart/filteredgridpart/intersectioniterator.hh>
 #include <dune/fem/gridpart/filteredgridpart/iterator.hh>
-#include <dune/fem/misc/hasboundaryintersection.hh>
+
 
 namespace Dune
 {
@@ -508,19 +508,6 @@ namespace Dune
       static const GridEntityType &gridEntity ( const EntityType &entity )
       {
         return HostAccessType::gridEntity( entity.impl().hostEntity() );
-      }
-    };
-
-
-
-    template< class HostGridPartImp, class FilterImp, bool useFilteredIndexSet >
-    struct HasBoundaryIntersection< FilteredGridPart<HostGridPartImp,FilterImp,useFilteredIndexSet> >
-    {
-      using GridPartType = FilteredGridPart<HostGridPartImp,FilterImp,useFilteredIndexSet>;
-      using EntityType = typename GridPartType::template Codim<0>::EntityType;
-      static bool apply(const EntityType &entity)
-      {
-        return true;
       }
     };
 
