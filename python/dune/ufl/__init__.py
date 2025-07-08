@@ -397,6 +397,8 @@ if _ufl2024AndNewer:
                 v = float(v)
             else:
                 v = [float(vv) for vv in v]
+                if len(v) == 1 and isNumber(self._value):
+                    v = v[0]
             assert type(self._value) == type(v)
             self._value = v
             for m in self.models:
@@ -502,6 +504,8 @@ else: # older ufl
                 v = float(v)
             else:
                 v = [float(vv) for vv in v]
+                if len(v) == 1 and isNumber(self._value):
+                    v = v[0]
             assert type(self._value) == type(v)
             self._value = v
             for m in self.models:
