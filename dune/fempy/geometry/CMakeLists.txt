@@ -1,5 +1,6 @@
 set(HEADERS
   edgelength.hh
+  dualfacetnormal.hh
 )
 
 if( NOT DUNE_ENABLE_PYTHONBINDINGS )
