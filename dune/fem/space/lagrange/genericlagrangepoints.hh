@@ -428,7 +428,7 @@ namespace Dune
         if( !useDimReduction( coordinate ) )
         {
           --(*coordinate);
-          OrderReductionType::template dofSubEntity( coordinate, codim, subEntity, dofNumber );
+          OrderReductionType::dofSubEntity( coordinate, codim, subEntity, dofNumber );
           ++(*coordinate);
 
           if( bottom )
