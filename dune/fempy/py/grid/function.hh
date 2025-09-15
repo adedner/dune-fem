@@ -119,7 +119,8 @@ namespace Dune
         typedef typename GridPartType::GridViewType GridView;
 
         auto lfClass = Python::insertClass<LocalFunction>(cls, "LocalFunction",
-            Python::GenerateTypeName("TODO-LGF"), pybind11::dynamic_attr());
+            Python::GenerateTypeName("Dune::Fem::ConstLocalFunction",MetaType<GridFunction>()),
+            pybind11::dynamic_attr());
         // assert( lfClass.second );
         registerLocalFunction< LocalFunction >( cls, lfClass.first );
 
