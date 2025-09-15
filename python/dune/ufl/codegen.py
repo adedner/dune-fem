@@ -105,6 +105,7 @@ class CodeGenerator(MultiFunction):
     boundary_id = _require_predefined
 
     cell_volume = _require_predefined
+    cell_diameter = _require_predefined
 
     def coefficient(self, expr):
         try:
@@ -442,7 +443,8 @@ class ModelClass():
 
         self.needFacetArea = isPresent( 'FacetArea' )
         self.needCellVolume = isPresent( 'CellVolume' )
-        self.needMaxCellEdgeLength = isPresent( 'MaxCellEdgeLength' )
+        self.needMaxCellEdgeLength = ( isPresent( 'MaxCellEdgeLength' ) or
+                                       isPresent( 'CellDiameter' ) )
         self.needMinCellEdgeLength = isPresent( 'MinCellEdgeLength' )
         self.needMaxFacetEdgeLength = isPresent( 'MaxFacetEdgeLength' )
         self.needMinFacetEdgeLength = isPresent( 'MinFacetEdgeLength' )
@@ -610,10 +612,19 @@ class ModelClass():
                 if side is None:
                     predefined[coefficient] = derivative
                 elif side == 'Side::in':
+                    predefined[coefficient] = derivative
                     predefined[coefficient('+')] = derivative
                 elif side == 'Side::out':
                     predefined[coefficient('-')] = derivative
                 coefficient = Grad(coefficient)
+            if side is not None:
+                if side == 'Side::in':
+                    coeff = coefficient('+')
+                elif side == 'Side::out':
+                    coeff = coefficient('-')
+                for derivative in self.coefficient(idx, x, side=side):
+                    predefined[coeff] = derivative
+                    coeff = Grad(coeff)
     def predefineCoefficients(self, predefined, skeleton=False):
         predefined.update({c: self.constant(i) for i, c in enumerate(self.constantList)})
         if skeleton is False:
@@ -634,6 +645,11 @@ class ModelClass():
         # self.needCellVolume = True
         volume = 'cellVolume()' if side is None else 'cellVolume_[ static_cast< std::size_t >( ' + side + ' ) ]'
         return UnformattedExpression('auto', volume)
+
+    def cellDiameter(self, side=None):
+        # perhaps not optimal?
+        maxEdge = 'maxCellEdgeLength()' if side is None else 'maxCellEdgeLength_[ static_cast< std::size_t >( ' + side + ' ) ]'
+        return UnformattedExpression('auto', maxEdge)
 
     def intersection(self):
         return UnformattedExpression('auto', 'intersection_')
@@ -793,7 +809,7 @@ class ModelClass():
         else:
             coefficients_ = Variable('std::array< ' + coefficientsTupleType + ', 2 >', 'coefficients_')
 
-        # generate code for constructor
+        # BEGIN: generate code for constructor
         arg_param = Variable('const Dune::Fem::ParameterReader &', 'parameter')
         if self.bindable:
             args = [
@@ -824,6 +840,15 @@ class ModelClass():
             if name is not None:
                 constructor.append(assign(dereference(get(idx)(constants_)), UnformattedExpression('auto', arg_param.name + '.getValue< ' + cppType + ' >( "' + name + '" )', uses=[arg_param])))
         code.append(constructor)
+        # END: Constructor code
+        # BEGIN: 'decouple' initializes all constants with new shared
+        # pointers, decoupling the copy of the function from other copies
+        decouple = Method('void', 'decouple')
+        for idx, (cppType, value) in enumerate(zip(self.constantTypes, self.constantValues)):
+            decouple.append(assign(get(idx)(constants_),
+                make_shared(cppType)(f"constant<{idx}>()")))
+        code.append(decouple)
+        # END: decouple
 
         entity = Variable('const EntityType &', 'entity')
         intersection = Variable('const IntersectionType &', 'intersection')

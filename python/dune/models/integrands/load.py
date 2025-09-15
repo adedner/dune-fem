@@ -87,7 +87,7 @@ def setConstant(integrands, index, value):
 
 
 class Source(object):
-    version = "v1_3"
+    version = "v1_4"
     def __init__(self, integrands, grid, modelIncludes, form, *args,
             tempVars=True, virtualize=True):
         gridType = grid.cppTypeName
@@ -103,15 +103,18 @@ class Source(object):
         self.virtualize = virtualize
         self.args = args
         self.form = form
+        self._signature = None
 
     def signature(self):
-        return uflSignature(self.form,
+        if self._signature is None:
+            self._signature = uflSignature(self.form,
                 *self.integrands._coefficients,
                 *self.integrands.coefficientCppTypes,
                 *self.integrands._constantNames,
                 *[a for a in self.args if isinstance(a,DirichletBC)],
                 *self.integrands.baseSignature
                 )+Source.version
+        return self._signature
 
     def name(self):
         from dune.common.hashit import hashIt

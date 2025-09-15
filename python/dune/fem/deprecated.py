@@ -17,9 +17,9 @@ warnings.filterwarnings(
     module=r'dune'
 )
 
-def deprecated(msg):
+def deprecated(msg,stacklevel=3):
     msg += """
 To disable this message add 'warnings.filterwarnings("ignore", category=DeprecationWarning)'
 to your script after importing all dune.fem modules.
 """
-    warnings.warn(msg, DeprecationWarning, stacklevel=3)
+    warnings.warn(msg, DeprecationWarning, stacklevel=stacklevel)

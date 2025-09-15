@@ -35,6 +35,7 @@ class RestrictionPropagator(MultiFunction):
             return expr('+')
 
     cell_volume = _apply_restriction
+    cell_diameter = _apply_restriction
 
 
 def applyRestrictions(form):
