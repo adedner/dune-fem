@@ -346,7 +346,7 @@ class CodeGenerator(MultiFunction):
                 cppType = cexpr.cppType
             if cppType is None:
                 cppType = 'const auto'
-            var = Variable(cppType, 'tmp' + str(len(self.code)))
+            var = Variable(cppType, 'tmp' + str(len(self.code)), addAssert=True)
             self.code.append(Declaration(var, cexpr))
             return var
         else:

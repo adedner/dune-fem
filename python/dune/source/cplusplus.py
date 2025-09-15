@@ -386,6 +386,8 @@ class SourceWriter:
                         self.emit(e, indent+2, Function('auto', '<lambda>'))
                     else:
                         self.emit(e, indent+1)
+                if src.obj.addAssert:
+                    self.emit(f"assert({src.obj.name} == {src.obj.name});",indent+1);
             else:
                 self.emit(declaration + ';', indent)
         elif isinstance(src, Using):

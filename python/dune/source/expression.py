@@ -187,9 +187,10 @@ class This(Expression):
 
 
 class Variable(Expression):
-    def __init__(self, cppType, name):
+    def __init__(self, cppType, name, addAssert = False):
         Expression.__init__(self, cppType)
         self.name = name
+        self.addAssert = addAssert
 
     def __hash__(self):
         return hash((self.cppType, self.name))
