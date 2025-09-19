@@ -63,18 +63,26 @@ namespace Dune
       PiolaTransformation ( const Geometry &geo, const Point &p )
         : gjt_( geo.jacobianTransposed( p ) ),
         detInv_( 1.0 / determinante( gjt_ ) )
-      {}
+      {
+      }
 
       template< class F >
       FieldVector< F, dimRange > apply ( const FieldVector< F, dimRange > &d ) const
       {
-        FieldVector< F, dimRange > ret( d );
-        FieldVector< F, dimDomain > arg, dest;
-        for( std::size_t r = 0; r < blocks; ++r )
+        FieldVector< F, dimRange > ret;
+        if constexpr ( dimDomain == dimRange )
         {
-          std::copy_n( d.begin() + r*dimDomain, dimDomain, arg.begin() );
-          gjt_.mtv( arg, dest );
-          std::copy_n( dest.begin(), dimDomain, ret.begin() + r*dimDomain );
+          gjt_.mtv( d, ret );
+        }
+        else
+        {
+          FieldVector< F, dimDomain > arg, dest;
+          for( int r = 0; r < blocks; ++r )
+          {
+            std::copy_n( d.begin() + r*dimDomain, dimDomain, arg.begin() );
+            gjt_.mtv( arg, dest );
+            std::copy_n( dest.begin(), dimDomain, ret.begin() + r*dimDomain );
+          }
         }
         ret *= detInv_;
         return ret;
@@ -83,13 +91,20 @@ namespace Dune
       template< class F >
       FieldVector< F, dimRange > apply_t ( const FieldVector< F, dimRange > &d ) const
       {
-        FieldVector< F, dimRange > ret( d );
-        FieldVector< F, dimDomain > arg, dest;
-        for( std::size_t r = 0; r < blocks; ++r )
+        FieldVector< F, dimRange > ret;
+        if constexpr ( dimDomain == dimRange )
         {
-          std::copy_n( ret.begin() + r*dimDomain, dimDomain, arg.begin() );
-          gjt_.mv( arg, dest );
-          std::copy_n( dest.begin(), dimDomain, ret.begin() + r*dimDomain );
+          gjt_.mv( d, ret );
+        }
+        else
+        {
+          FieldVector< F, dimDomain > arg, dest;
+          for( int r = 0; r < blocks; ++r )
+          {
+            std::copy_n( ret.begin() + r*dimDomain, dimDomain, arg.begin() );
+            gjt_.mv( arg, dest );
+            std::copy_n( dest.begin(), dimDomain, ret.begin() + r*dimDomain );
+          }
         }
         ret *= detInv_;
         return ret;
