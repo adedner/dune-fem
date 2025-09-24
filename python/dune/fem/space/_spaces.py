@@ -609,9 +609,24 @@ def composite(*spaces, **kwargs):
 
     if not spaces:
         raise Exception("Cannot create TupleDiscreteFunctionSpace from empty tuple of discrete function spaces")
-    spaces = tuple([s.__impl__ for s in spaces])
-    compositeStorage = None
+
+    compositeStorage = kwargs.get('storage', None)
     compositeField = None
+
+    # if composite storage was selected then
+    # check all sub spaces and convert if necessary
+    if compositeStorage is not None:
+        spaces = list(spaces)
+        for i, space in enumerate(spaces):
+            storage = space.storage.name
+            if (compositeStorage != storage):
+                # clone space to ensure same storage
+                spaces[ i ] = space.clone(storage=compositeStorage)
+
+    # get implementations of spaces
+    spaces = tuple([s.__impl__ for s in spaces])
+
+    # now check again all storages and fields
     for space in spaces:
         storage = space.storage.name
         if compositeStorage and (compositeStorage != storage):
