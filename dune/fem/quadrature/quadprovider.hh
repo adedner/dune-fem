@@ -284,6 +284,20 @@ namespace Dune
       }
     };
 
+    // QuadratureProviderTraits
+    // ------------------------
+
+    /*! \class QuadratureProviderTraits
+     *  \ingroup Quadrature
+     *  \brief provide type of integration point list
+     */
+    template <class FieldImp, int dim >
+    struct QuadratureProviderTraits
+    {
+      typedef QuadratureImp< FieldImp, dim > IntegrationPointListType;
+    };
+
+#define FACTORYTRAITS 1
     /*! \class QuadratureProvider
      *  \ingroup Quadrature
      *  \brief provide a single instance pool of quadratures
@@ -299,7 +313,8 @@ namespace Dune
      *  - QuadratureProvider<FieldImp,2,QuadratureTraits>
      *  - QuadratureProvider<FieldImp,3,QuadratureTraits>
      */
-    template< typename FieldImp, int dim, template< class, int > class IntegrationTraits >
+    template< typename FieldImp, int dim,
+              template< class, int > class IntegrationTraits = QuadratureProviderTraits>
     class QuadratureProvider
     {
     public:
@@ -309,11 +324,14 @@ namespace Dune
 
     private:
       typedef QuadratureProvider< FieldType, dimension, IntegrationTraits > ThisType;
-
       typedef IntegrationTraits< FieldType, dimension > QuadratureTraits;
 
-      // to be removed
+      //! type of integration point list implementation
+      typedef typename QuadratureTraits::IntegrationPointListType  QuadratureImplementationType;
+
+#if !FACTORYTRAITS
       typedef QuadratureTraits FactoryTraits;
+#endif
 
       template <class PointQuadrature, class QuadratureKey>
       class PointQuadratureStorage : public PointQuadrature
@@ -326,22 +344,19 @@ namespace Dune
       };
 
     public:
-      //! type of integration point list implementation
-      typedef typename QuadratureTraits::IntegrationPointListType  QuadratureImplementationType;
-
       //! Access to the quadrature implementations.
-#if 0
+#if FACTORYTRAITS
       template <class FactoryTraits>
       static const QuadratureImplementationType &getQuadrature( const FactoryTraits traits,
-                                                            const GeometryType &geometry,
-                                                            const typename FactoryTraits::QuadratureKeyType& quadKey )
+                                                                const GeometryType &geometry,
+                                                                const typename FactoryTraits::QuadratureKeyType& quadKey )
 #else
       static const QuadratureImplementationType &getQuadrature( const GeometryType &geometry,
                                                                 const typename FactoryTraits::QuadratureKeyType& quadKey )
 #endif
       {
-        static_assert( std::is_same< QuadratureImplementationType,
-                                     typename FactoryTraits::IntegrationPointListType> :: value );
+        //static_assert( std::is_same< QuadratureImplementationType,
+        //                            typename FactoryTraits::IntegrationPointListType> :: value );
 
         // for 0d point quadratures
         if constexpr ( dimension == 0 )
@@ -416,13 +431,13 @@ namespace Dune
         } // else not dimension 0
       }
 
-#if 0
+#if FACTORYTRAITS
       //! Access to the quadrature implementations.
       template <class FactoryTraits>
       static const QuadratureImplementationType &getQuadrature( const FactoryTraits traits,
-                                                            const GeometryType &geometry,
-                                                            const GeometryType &elementGeometry,
-                                                            const typename FactoryTraits::QuadratureKeyType& quadKey )
+                                                                const GeometryType &geometry,
+                                                                const GeometryType &elementGeometry,
+                                                                const typename FactoryTraits::QuadratureKeyType& quadKey )
 #else
       //! Access to the quadrature implementations.
       static const QuadratureImplementationType &getQuadrature( const GeometryType &geometry,

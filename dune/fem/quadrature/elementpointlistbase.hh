@@ -57,7 +57,7 @@ namespace Dune
        */
       template <class QuadratureKey>
       ElementPointListBase ( const GeometryType &geometry, const QuadratureKey& quadKey )
-      : quad_( geometry, quadKey )
+      : quad_( IntegrationTraits(), geometry, quadKey )
       {}
 
       /** \brief constructor
@@ -227,7 +227,7 @@ namespace Dune
                              const GeometryType &faceGeo,
                              const int localFaceIndex,
                              const QuadratureKeyType& quadKey )
-      : quad_( faceGeo, quadKey ),
+      : quad_( IntegrationTraits(), faceGeo, quadKey ),
         elementGeometry_( elementGeo ),
         localFaceIndex_( localFaceIndex )
       {}
@@ -242,7 +242,7 @@ namespace Dune
       ElementPointListBase ( const GeometryType &elementGeo,
                              const int localFaceIndex,
                              const QuadratureKeyType& quadKey )
-      : quad_( getFaceGeometry( elementGeo, localFaceIndex ), quadKey ),
+      : quad_( IntegrationTraits(), getFaceGeometry( elementGeo, localFaceIndex ), quadKey ),
         elementGeometry_( elementGeo ),
         localFaceIndex_( localFaceIndex )
       {}

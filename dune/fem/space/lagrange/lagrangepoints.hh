@@ -450,7 +450,8 @@ namespace Dune
       };
 
       //! type of used integration point list
-      typedef Fem::IntegrationPointList< FieldType, dimension, PointListTraits > IntegrationPointListType;
+      //typedef Fem::IntegrationPointList< FieldType, dimension, PointListTraits > IntegrationPointListType;
+      typedef Fem::IntegrationPointList< FieldType, dimension > IntegrationPointListType;
 
       //! type of global coordinate
       typedef typename IntegrationPointListType::CoordinateType CoordinateType;

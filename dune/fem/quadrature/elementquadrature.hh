@@ -15,6 +15,7 @@ namespace Dune
 
     template< class GridPartImp, int codim, template< class, int > class QuadratureTraits >
     struct ElementQuadratureTraits
+      : public QuadratureTraits< typename GridPartImp :: ctype, GridPartImp :: dimension - codim >
     {
       // type of single coordinate
       typedef typename GridPartImp :: ctype ctype;
@@ -26,10 +27,10 @@ namespace Dune
       enum { codimension = codim };
 
       // type of used integration point list
-      typedef Quadrature< ctype, dimension-codim, QuadratureTraits > IntegrationPointListType;
+      typedef Quadrature< ctype, dimension-codim > IntegrationPointListType;
 
       // type of local coordinate (with respect to the codim-0 entity)
-      typedef typename Quadrature< ctype, dimension, QuadratureTraits > :: CoordinateType
+      typedef typename Quadrature< ctype, dimension > :: CoordinateType
         CoordinateType;
     };
 

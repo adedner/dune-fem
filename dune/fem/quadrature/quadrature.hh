@@ -152,7 +152,7 @@ namespace Dune
    *        that quadratures have weights.
    */
   template< typename FieldImp, int dim,
-            template< class, int > class IntegrationTraits,
+            //template< class, int > class IntegrationTraits,
             bool isQuadrature = false >
   class IntegrationPointList
   {
@@ -164,18 +164,18 @@ namespace Dune
     //typedef IntegrationTraits< FieldType, dimension > Traits;
 
   private:
-    typedef IntegrationPointList< FieldType, dimension, IntegrationTraits > ThisType;
+    //typedef IntegrationPointList< FieldType, dimension, IntegrationTraits > ThisType;
+    typedef IntegrationPointList< FieldType, dimension, isQuadrature > ThisType;
 
-    typedef QuadratureProvider< FieldType, dimension, IntegrationTraits >
-      QuadratureProviderType;
+    typedef QuadratureProvider< FieldType, dimension > QuadratureProviderType;
 
     typedef typename std::conditional< isQuadrature,
                              const FieldType&,
                              FieldType > :: type WeightReturnType;
   public:
     //! type of integration point list implementation
-    // typedef typename Traits :: IntegrationPointListType IntegrationPointListType;
-    typedef typename QuadratureImp< FieldType, dimension > IntegrationPointListType; // QuadratureImplementationType
+    typedef QuadratureImp< FieldType, dimension > IntegrationPointListType;
+    //typedef typename QuadratureProviderType::IntegrationPointListType  IntegrationPointListType;
 
     //! type of coordinate
     typedef typename IntegrationPointListType :: CoordinateType CoordinateType;
@@ -212,8 +212,8 @@ namespace Dune
     inline IntegrationPointList ( const FactoryTraits traits,
                                   const GeometryType &geometryType,
                                   const typename FactoryTraits::QuadratureKeyType& quadKey )
-    : ipListPtr_( &QuadratureProviderType :: getQuadrature( geometryType, quadKey ), NoDelete() )
-    //: ipListPtr_( &QuadratureProviderType :: getQuadrature( traits, geometryType, quadKey ), NoDelete() )
+    //: ipListPtr_( &QuadratureProviderType :: getQuadrature( geometryType, quadKey ), NoDelete() )
+    : ipListPtr_( &QuadratureProviderType :: getQuadrature( traits, geometryType, quadKey ), NoDelete() )
     {
     }
 
@@ -242,8 +242,8 @@ namespace Dune
                                   const GeometryType &geometryType,
                                   const GeometryType &elementGeometry,
                                   const typename FactoryTraits::QuadratureKeyType& quadKey )
-    //: ipListPtr_( &QuadratureProviderType :: getQuadrature( traits, geometryType, elementGeometry, quadKey ), NoDelete() )
-    : ipListPtr_( &QuadratureProviderType :: getQuadrature( geometryType, elementGeometry, quadKey ), NoDelete() )
+    : ipListPtr_( &QuadratureProviderType :: getQuadrature( traits, geometryType, elementGeometry, quadKey ), NoDelete() )
+    //: ipListPtr_( &QuadratureProviderType :: getQuadrature( geometryType, elementGeometry, quadKey ), NoDelete() )
     {
     }
 
@@ -439,9 +439,10 @@ namespace Dune
    *  \note The difference between integration point lists and quadratures is
    *        that quadratures have weights.
    */
-  template< class FieldImp, int dim,
-            template< class, int > class QuadratureTraits = DefaultQuadratureTraits >
-  using Quadrature = IntegrationPointList< FieldImp, dim, QuadratureTraits, true >;
+  //template< class FieldImp, int dim,
+  //          template< class, int > class QuadratureTraits = DefaultQuadratureTraits >
+  template< class FieldImp, int dim >
+  using Quadrature = IntegrationPointList< FieldImp, dim, true >;
 
 
 
