@@ -161,7 +161,7 @@ namespace Dune
 
     enum { dimension = dim };
 
-    typedef IntegrationTraits< FieldType, dimension > Traits;
+    //typedef IntegrationTraits< FieldType, dimension > Traits;
 
   private:
     typedef IntegrationPointList< FieldType, dimension, IntegrationTraits > ThisType;
@@ -174,7 +174,8 @@ namespace Dune
                              FieldType > :: type WeightReturnType;
   public:
     //! type of integration point list implementation
-    typedef typename Traits :: IntegrationPointListType IntegrationPointListType;
+    // typedef typename Traits :: IntegrationPointListType IntegrationPointListType;
+    typedef typename QuadratureImp< FieldType, dimension > IntegrationPointListType; // QuadratureImplementationType
 
     //! type of coordinate
     typedef typename IntegrationPointListType :: CoordinateType CoordinateType;
