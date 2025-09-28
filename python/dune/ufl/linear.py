@@ -126,6 +126,7 @@ class MultiLinearExprSplitter(Transformer):
 
     atan = terminal
     atan2 = terminal
+    atan_2 = terminal
     abs = terminal
     cos = terminal
     cosh = terminal
@@ -189,6 +190,8 @@ def splitForm(form, arguments, idFct=None):
     if arguments is None:
         arguments = form.arguments()
 
+    form = apply_algebra_lowering(form)
+    form = apply_derivatives(form)
     form = applyRestrictions(form)
     form = expand_indices(apply_derivatives(apply_algebra_lowering(form)))
     form = applyRestrictions(form)

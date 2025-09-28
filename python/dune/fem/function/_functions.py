@@ -40,6 +40,7 @@ def localFunction(gridView, name, order, value):
     return _localFunction(gridView, name, order, value)
 
 def gridFunction(expr=None,gridView=None,*,name=None,order=None, fctName=None, view=None, **kwargs):
+    if hasattr(expr,"gridView"): return expr
     from ufl.core.expr import Expr
     from ufl import as_vector
     if view is not None:
@@ -166,9 +167,15 @@ def _uflFunction(gridView, name, order, ufl, virtualize=True, scalar=False,
 
 def cppFunction(gridView, name, order, fctName, includes,
                 *args,**kwargs):
+    from dune.fem.plotting import plotPointData
     args = args + tuple(kwargs.get("args",()))
-    gf = gridView.function(fctName,includes,*args,order=order,name=name)
-    return dune.ufl.GridFunction( gf )
+    dimRange = kwargs.get("dimRange",None)
+    gf = gridView.function(fctName,includes,*args,order=order,name=name,dimRange=dimRange)
+    setattr(gf.__class__,"integrate", lambda self: _uflFunction(gridView,self.name,order,self).integrate())
+    # setattr(gf,"plot", lambda *args,**kwargs: plotPointData(gf,*args,**kwargs))
+    gf.plot = lambda *args,**kwargs: plotPointData(gf,*args,**kwargs)
+    gf = dune.ufl.GridFunction( gf, scalar=gf.scalar if dimRange==None else False)
+    return gf
 
 def _assertSizesMatch(space, dofVector):
     # only allow contiguous arrays as dof vectors

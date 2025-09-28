@@ -6,7 +6,7 @@ except ImportError: # older ufl versions
     from ufl import FiniteElementBase as AbstractFiniteElement
 from ufl import FunctionSpace, dx
 from ufl import Coefficient, FacetNormal, Form, SpatialCoordinate
-from ufl import CellVolume, MinCellEdgeLength, MaxCellEdgeLength
+from ufl import CellVolume, CellDiameter, MinCellEdgeLength, MaxCellEdgeLength
 from ufl import FacetArea, MinFacetEdgeLength, MaxFacetEdgeLength
 from ufl import action, derivative, as_vector, replace, grad
 from ufl.classes import Indexed
@@ -211,6 +211,7 @@ def _compileUFL(integrands, form, *args, tempVars=True):
     n = FacetNormal(form.ufl_domain())
 
     cellVolume = CellVolume(form.ufl_domain())
+    cellDiameter = CellDiameter(form.ufl_domain())
     maxCellEdgeLength = MaxCellEdgeLength(form.ufl_domain())
     minCellEdgeLength = MinCellEdgeLength(form.ufl_domain())
 
@@ -254,8 +255,7 @@ def _compileUFL(integrands, form, *args, tempVars=True):
         predefined = {derivatives_u[i]: arg[i] for i in range(len(derivatives_u))}
         predefined[x] = integrands.spatialCoordinate('x')
         predefined[cellVolume] = integrands.cellVolume()
-        #predefined[maxCellEdgeLength] = maxEdgeLength(integrands.cellGeometry())
-        #predefined[minCellEdgeLength] = minEdgeLength(integrands.cellGeometry())
+        predefined[cellDiameter] = integrands.cellDiameter()
         predefined[maxCellEdgeLength] = integrands.maxCellEdgeLength()
         predefined[minCellEdgeLength] = integrands.minCellEdgeLength()
         integrands.predefineCoefficients(predefined, False)
@@ -264,6 +264,7 @@ def _compileUFL(integrands, form, *args, tempVars=True):
         predefined = {derivatives_ubar[i]: arg[i] for i in range(len(derivatives_u))}
         predefined[x] = integrands.spatialCoordinate('x')
         predefined[cellVolume] = integrands.cellVolume()
+        predefined[cellDiameter] = integrands.cellDiameter()
         predefined[maxCellEdgeLength] = integrands.maxCellEdgeLength()
         predefined[minCellEdgeLength] = integrands.minCellEdgeLength()
         integrands.predefineCoefficients(predefined, False)
@@ -277,6 +278,7 @@ def _compileUFL(integrands, form, *args, tempVars=True):
         predefined[x] = integrands.spatialCoordinate('x')
         predefined[n] = integrands.facetNormal('x')
         predefined[cellVolume] = integrands.cellVolume()
+        predefined[cellDiameter] = integrands.cellDiameter()
         predefined[maxCellEdgeLength] = integrands.maxCellEdgeLength()
         predefined[minCellEdgeLength] = integrands.minCellEdgeLength()
         predefined[facetArea] = integrands.facetArea()
@@ -290,6 +292,7 @@ def _compileUFL(integrands, form, *args, tempVars=True):
         predefined[x] = integrands.spatialCoordinate('x')
         predefined[n] = integrands.facetNormal('x')
         predefined[cellVolume] = integrands.cellVolume()
+        predefined[cellDiameter] = integrands.cellDiameter()
         predefined[maxCellEdgeLength] = integrands.maxCellEdgeLength()
         predefined[minCellEdgeLength] = integrands.minCellEdgeLength()
         #predefined[maxCellEdgeLength] = maxEdgeLength(integrands.cellGeometry())
@@ -309,6 +312,8 @@ def _compileUFL(integrands, form, *args, tempVars=True):
         predefined[n('+')] = integrands.facetNormal('xIn')
         predefined[cellVolume('+')] = integrands.cellVolume('Side::in')
         predefined[cellVolume('-')] = integrands.cellVolume('Side::out')
+        predefined[cellDiameter('+')] = integrands.cellDiameter('Side::in')
+        predefined[cellDiameter('-')] = integrands.cellDiameter('Side::out')
         predefined[maxCellEdgeLength('+')] = integrands.maxCellEdgeLength('Side::in') #maxEdgeLength(integrands.cellGeometry('Side::in'))
         predefined[maxCellEdgeLength('-')] = integrands.maxCellEdgeLength('Side::out')# maxEdgeLength(integrands.cellGeometry('Side::out'))
         predefined[minCellEdgeLength('+')] = integrands.minCellEdgeLength('Side::in') #minEdgeLength(integrands.cellGeometry('Side::in'))
@@ -317,6 +322,7 @@ def _compileUFL(integrands, form, *args, tempVars=True):
         predefined[maxFacetEdgeLength] = integrands.maxFacetEdgeLength()
         predefined[minFacetEdgeLength] = integrands.minFacetEdgeLength()
         integrands.predefineCoefficients(predefined, True)
+        # integrands.predefineCoefficients(predefined, False)
         integrands.skeleton = generateBinaryCode(predefined, derivatives_phi, integrals['interior_facet'], tempVars=tempVars)
 
         predefined = {derivatives_ubar[i](s): arg[i] for i in range(len(derivatives_u)) for s, arg in (('+', argIn), ('-', argOut))}
@@ -324,6 +330,8 @@ def _compileUFL(integrands, form, *args, tempVars=True):
         predefined[n('+')] = integrands.facetNormal('xIn')
         predefined[cellVolume('+')] = integrands.cellVolume('Side::in')
         predefined[cellVolume('-')] = integrands.cellVolume('Side::out')
+        predefined[cellDiameter('+')] = integrands.cellDiameter('Side::in')
+        predefined[cellDiameter('-')] = integrands.cellDiameter('Side::out')
         predefined[maxCellEdgeLength('+')] = integrands.maxCellEdgeLength('Side::in') #maxEdgeLength(integrands.cellGeometry('Side::in'))
         predefined[maxCellEdgeLength('-')] = integrands.maxCellEdgeLength('Side::out')# maxEdgeLength(integrands.cellGeometry('Side::out'))
         predefined[minCellEdgeLength('+')] = integrands.minCellEdgeLength('Side::in') #minEdgeLength(integrands.cellGeometry('Side::in'))
@@ -336,6 +344,7 @@ def _compileUFL(integrands, form, *args, tempVars=True):
         predefined[maxFacetEdgeLength] = integrands.maxFacetEdgeLength()
         predefined[minFacetEdgeLength] = integrands.minFacetEdgeLength()
         integrands.predefineCoefficients(predefined, True)
+        # integrands.predefineCoefficients(predefined, False)
         integrands.linearizedSkeleton = generateBinaryLinearizedCode(predefined, derivatives_phi, derivatives_u, linearizedIntegrals.get('interior_facet'), tempVars=tempVars)
 
     if dirichletBCs:
