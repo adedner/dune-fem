@@ -43,7 +43,7 @@ else: # download tutorial
     cd $TMPNAME
     git checkout --quiet {_docHash}
 
-    cp doc/*.py doc/*.ipynb doc/*.hh doc/*.dgf doc/*.msh ..
+    cp doc/*.py doc/*.ipynb doc/*.hh doc/*.dgf doc/*.msh doc/*.asc ..
     cd ../
 
     rm -rf $TMPNAME
