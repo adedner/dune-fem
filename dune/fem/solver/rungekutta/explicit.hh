@@ -214,8 +214,11 @@ namespace DuneODE
           << "\\\\" <<std::endl;
     }
 
-    //! return order of RK solver
+    //! return stages of RK solver
     int stages () const { return stages_; }
+
+    //! return order of RK solver
+    int order () const { return ord_; }
 
   protected:
     // Butcher table A,b,c
