@@ -89,6 +89,9 @@ namespace DuneODE
 
     /** \brief return stages of RK solver (-1 if not implemented) */
     virtual int stages () const { return -1; }
+
+    /** \brief return order of RK solver (-1 if not implemented) */
+    virtual int order () const { return -1; }
   };
 
 

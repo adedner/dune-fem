@@ -87,6 +87,7 @@ namespace DuneODE
       timeStepControl_( timeStepControl ),
       sourceTerm_( sourceTerm ),
       stages_( butcherTable.stages() ),
+      ord_( butcherTable.order() ),
       alpha_( butcherTable.A() ),
       gamma_( stages() ),
       beta_( stages() ),
@@ -113,6 +114,7 @@ namespace DuneODE
       nonlinearSolver_( parameters ),
       timeStepControl_( timeStepControl ),
       stages_( butcherTable.stages() ),
+      ord_( butcherTable.order() ),
       alpha_( butcherTable.A() ),
       gamma_( stages() ),
       beta_( stages() ),
@@ -291,6 +293,8 @@ namespace DuneODE
 
     int stages () const { return stages_; }
 
+    int order () const { return ord_; }
+
     void description ( std::ostream &out ) const
     {
       out << "Generic " << stages() << "-stage implicit Runge-Kutta solver.\\\\" << std::endl;
@@ -322,6 +326,8 @@ namespace DuneODE
     SourceTerm               sourceTerm_;
 
     int stages_;
+    int ord_;
+
     double delta_;
     Dune::DynamicMatrix< double > alpha_;
     Dune::DynamicVector< double > gamma_, beta_, c_;
