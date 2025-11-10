@@ -284,6 +284,15 @@ void solve(OdeFactory factory, const bool verbose)
   // initialize odesolver
   odeSolver->initialize( U );
 
+  // test methods order and stages
+  int stages = odeSolver->stages();
+  int obtainedOrder  = odeSolver->order();
+
+  if( stages == -1 )
+    DUNE_THROW(Dune::NotImplemented,"ODESolver: method 'stages' is not implemented!");
+  if( obtainedOrder == -1 )
+    DUNE_THROW(Dune::NotImplemented,"ODESolver: method 'order' is not implemented!");
+
   // time loop
   for( tp.init(stepSize); tp.time() < endTime; tp.next(stepSize) ) {
     // do calculation

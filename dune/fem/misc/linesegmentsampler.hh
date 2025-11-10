@@ -147,8 +147,9 @@ namespace Dune
       DomainType ds = right_ - left_;
       ds /= DomainFieldType( numSamples - 1 );
 
+      // use max value as invalid to fill values from other cores
       const RangeFieldType invalid
-        = std::numeric_limits< RangeFieldType >::quiet_NaN();
+        = std::numeric_limits< RangeFieldType >::max();
       for( int i = 0; i < numSamples; ++i )
         samples[ i ] = typename GridFunction::RangeType( invalid );
 

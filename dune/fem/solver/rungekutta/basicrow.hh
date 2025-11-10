@@ -92,6 +92,7 @@ namespace DuneODE
       timeStepControl_( timeStepControl ),
       sourceTerm_( sourceTerm ),
       stages_( butcherTable.stages() ),
+      ord_( butcherTable.order() ),
       alpha_( butcherTable.A() ),
       alpha2_( butcherTable.B() ),
       gamma_( stages() ),
@@ -300,6 +301,8 @@ namespace DuneODE
 
     int stages () const { return stages_; }
 
+    int order () const { return ord_; }
+
     void description ( std::ostream &out ) const
     {
       out << "Generic " << stages() << "-stage implicit Runge-Kutta solver.\\\\" << std::endl;
@@ -333,6 +336,8 @@ namespace DuneODE
     SourceTerm sourceTerm_;
 
     int stages_;
+    int ord_;
+
     double delta_;
     Dune::DynamicMatrix< double > alpha_, alpha2_;
     Dune::DynamicVector< double > gamma_, beta_, c_;
