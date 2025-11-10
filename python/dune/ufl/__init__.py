@@ -180,6 +180,14 @@ class FemSpace(Space):
         __module__ = space.__module__
         self.FemSpaceClass = space.__class__
 
+        rep = repr(self.__impl__)
+        ## remove sequences of object at 'address' from signature string
+        pos = rep.find(" object at ")
+        if pos != -1:
+            # remove substring with object at address
+            rep = rep.replace(rep[pos:-1], "")
+        self.__repstr = rep
+
     def toVectorSpace(self):
         if not self.__impl__.scalar:
             return self
@@ -211,8 +219,12 @@ class FemSpace(Space):
             result = tocontainer(result)
             # result.func.__doc__ = doc
         return result
+
     def __repr__(self):
-        return repr(self.__impl__)
+        return self.__repstr
+        # old version
+        # return repr(self.__impl__)
+
     __dict__   = property(lambda self:self.__impl__.__dict__)
     __name__   = property(lambda self:self.__impl__.__name__)
 """
