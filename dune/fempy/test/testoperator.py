@@ -27,7 +27,7 @@ destE = space.interpolate(as_vector([0,]*dimR), name='destE')
 
 u  = TrialFunction(space)
 v  = TestFunction(space)
-x = SpatialCoordinate(space.cell())
+x = SpatialCoordinate(space)
 
 ubar = space.interpolate(as_vector([dot(x,x),]*dimR),name="ubar")
 a    = ( inner(0.5*dot(u,u), v[0]) +

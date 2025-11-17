@@ -24,14 +24,14 @@ spc = create.space("lagrange", grid, dimRange=1, order=2, storage="istl")
 uflSpace = Space((grid.dimGrid, grid.dimWorld), 1)
 u = TrialFunction(uflSpace)
 v = TestFunction(uflSpace)
-x = SpatialCoordinate(uflSpace.cell())
-n = FacetNormal(uflSpace.cell())
+x = SpatialCoordinate(uflSpace)
+n = FacetNormal(uflSpace)
 mu = 1.
-# he = MaxFacetEdgeLength(uflSpace.cell())('+') # this is wrong
-# hT = MaxCellEdgeLength(uflSpace.cell())
-hT = CellVolume(uflSpace.cell())
-hF = FacetArea(uflSpace.cell())
-# he = FacetArea(uflSpace.cell()) / Min( avg('+'), avg('-') )
+# he = MaxFacetEdgeLength(uflSpace)('+') # this is wrong
+# hT = MaxCellEdgeLength(uflSpace)
+hT = CellVolume(uflSpace)
+hF = FacetArea(uflSpace)
+# he = FacetArea(uflSpace) / min_value( avg('+'), avg('-') )
 heInv = hF / avg( hT )
 exact = as_vector( [cos(pi*x[0])*cos(pi*x[1])] )
 

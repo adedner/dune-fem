@@ -22,7 +22,7 @@ from ufl import TestFunction, TrialFunction, SpatialCoordinate, conditional, dot
 uflSpace = Space(dimDomain, dimRange)
 u = TrialFunction(uflSpace)
 v = TestFunction(uflSpace)
-x = SpatialCoordinate(uflSpace.cell())
+x = SpatialCoordinate(uflSpace)
 
 from math import pi,log,sqrt
 from ufl import cos, sin,as_vector, dx, ds, grad, inner

@@ -11,7 +11,7 @@ grid = create.grid("ALUConform", "../data/mixed.dgf", dimgrid=2)
 
 from ufl import SpatialCoordinate
 uflSpace = dune.ufl.Space(2, dimRange)
-x = SpatialCoordinate(uflSpace.cell())
+x = SpatialCoordinate(uflSpace)
 from math import pi,log,sqrt
 from ufl import cos,sin,as_vector
 exact = as_vector( [sin(3*pi*x[0]), x[1]*x[1], x[0]*x[0], cos(3.*pi*x[1])]+[0]*(dimRange-4) )
