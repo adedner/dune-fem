@@ -62,7 +62,7 @@ if test_scalar:
     uflSpace = Space((2,2),dimRange)
     u = TrialFunction(uflSpace)
     v = TestFunction(uflSpace)
-    x = SpatialCoordinate(uflSpace.cell())
+    x = SpatialCoordinate(uflSpace)
 
     rhs = (x[0] + x[1]) * v[0]
     a = inner(grad(u), grad(v)) * dx
@@ -82,7 +82,7 @@ if test_vector:
     uflSpace = Space((2,2),dimRange)
     u = TrialFunction(uflSpace)
     v = TestFunction(uflSpace)
-    x = SpatialCoordinate(uflSpace.cell())
+    x = SpatialCoordinate(uflSpace)
 
     rhs = (x[0] + x[1]) * v[0]
     a = inner(grad(u), grad(v)) * dx
