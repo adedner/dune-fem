@@ -86,6 +86,8 @@ int main ( int argc, char **argv )
 {
   Dune::Fem::MPIManager::initialize( argc, argv );
   Dune::Fem::Parameter::append( argc, argv );
+
+  const auto& comm = MPIManager::comm();
   try
   {
     Dune::Fem::Parameter::append( "parameter" );
@@ -140,8 +142,16 @@ int main ( int argc, char **argv )
       Dune::Fem::CheckPointer< GridType >::writeSingleCheckPoint( grid, time, true );
     }
 
+    // wait several seconds
+    sleep(5);
+
+    // wait for all procs
+    comm.barrier();
+
     // reset PersistenceManager to initial state (otherwise the restore will not work)
     Dune::Fem::persistenceManager.reset();
+
+
 
     // restore from checkpoint
     {
