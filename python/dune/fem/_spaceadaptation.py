@@ -39,21 +39,18 @@ class SpaceMarker(AdaptationMarkerBase):
 
         Args:
             indicator         A piecewise constant grid function (or ufl expression) holding the estimated error (or indicator value)
-            refineTolerance   An element E will be marked for order increase if indicator(E) > refineTolerance.
-            coarsenTolerance  An element E will be marked for order decrease if indicator(E) < coarsenTolerance.
+            refineTolerance   An element E will be marked for order increase if indicator(E) > refineTolerance (float or callable returning float).
+            coarsenTolerance  An element E will be marked for order decrease if indicator(E) < coarsenTolerance (float or callable returning float).
             minOrder          Minimal order to be assumed (in [0, space.order).
             maxOrder          Maximal order to be assumed (in [minOrder, space.order]).
             markNeighbors     If True, for an element E that is marked for order increase all it's neighbors will be marked for at least the same order.
             statistics        If True, the returned tuple contains the number of elements marked for increase and decrease, respectively.
 
-        Returns:
-            tuple( int, int )
-
         """
         super().__init__(indicator, refineTolerance, coarsenTolerance, markNeighbors, statistics)
 
-        self.minOrder = minOrder
-        self.maxOrder = maxOrder
+        self._minOrder = minOrder
+        self._maxOrder = maxOrder
 
     def __call__(self, space):
         """ Perform marking of given space
@@ -67,13 +64,13 @@ class SpaceMarker(AdaptationMarkerBase):
         """
         assert space.canAdapt, "Provided space does not support p-adaptation!"
 
-        assert self.minOrder >= 0 and self.minOrder <= space.order, "Invalid value for minOrder, must be between 0 and space.order, including!"
-        if self.maxOrder == -1: self.maxOrder = space.order
-        assert self.maxOrder >= self.minOrder and self.maxOrder <= space.order, "Invalid value for maxOrder, must be between minOrder and space.order, including!"
+        assert self._minOrder >= 0 and self._minOrder <= space.order, "Invalid value for minOrder, must be between 0 and space.order, including!"
+        if self._maxOrder == -1: self._maxOrder = space.order
+        assert self._maxOrder >= self._minOrder and self._maxOrder <= space.order, "Invalid value for maxOrder, must be between minOrder and space.order, including!"
 
-        return space.mark(self.indicatorGF(space.gridView), self.refineTolerance, self.coarsenTolerance,
-                          self.minOrder, self.maxOrder,
-                          self.markNeighbors, self.statistics )
+        return space.mark(self.indicatorGF(space.gridView), self._refineTolerance(), self._coarsenTolerance(),
+                          self._minOrder, self._maxOrder,
+                          self._markNeighbors, self._statistics )
 
 
 def spaceAdapt(marker, *args, **kwargs):
