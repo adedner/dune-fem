@@ -116,20 +116,31 @@ class GridMarker(AdaptationMarkerBase):
         self.strategy  = strategy # default, doerfler
         self.layered   = layered
 
+        if gridView is not None:
+            # make sure grid
+            GridMarker.checkGridView( self.gridView )
+
+    @staticmethod
+    def checkGridView( gridView ):
+        try:
+            if not gridView.canAdapt:
+                raise AttributeError("indicator function must be over grid view that supports adaptation")
+        except AttributeError:
+            raise AttributeError("indicator function must be over grid view that supports adaptation")
+
     def __call__(self):
         # get indicator grid function
         indicatorGF = self.indicatorGF(self.gridView)
         # obtain grid view
         if self.gridView is None:
             self.gridView = indicatorGF.gridView
-        try:
-            if not self.gridView.canAdapt:
-                raise AttributeError("indicator function must be over grid view that supports adaptation")
-        except AttributeError:
-            raise AttributeError("indicator function must be over grid view that supports adaptation")
+            GridMarker.checkGridView( self.gridView )
 
-        return self.gridView.mark(indicatorGF, self.refineTolerance, self.coarsenTolerance,
-                                  self.minLevel, self.maxLevel, self.minVolume, self.maxVolume, self.markNeighbors, self.statistics)
+        if self.strategy == 'doerfler':
+            return self.gridView.doerflerMark(indicatorGF, self.refineTolerance, self.maxLevel, self.layered)
+        else: # default
+            return self.gridView.mark(indicatorGF, self.refineTolerance, self.coarsenTolerance,
+                                      self.minLevel, self.maxLevel, self.minVolume, self.maxVolume, self.markNeighbors, self.statistics)
 ### end GridMarker
 
 def _adaptArguments(first,*args):
