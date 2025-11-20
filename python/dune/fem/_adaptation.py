@@ -50,11 +50,19 @@ class AdaptationMarkerBase:
     # constructor
     def __init__(self, indicator, refineTolerance, coarsenTolerance=0.,
                  markNeighbors = False, statistics = False):
+        """
+        Parameters:
+            indicator        an indicator grid function
+            refineTolerance  float or callable returning float to give refinement tolerance
+            coarsenTolerance float or callable returning float to give coarsening tolerance (default 0.0)
+            markNeighbors    flag whether or not to mark neighbors of elements marked for refinement (default False)
+            statistics       flag whether or not to produce statistics (default False)
+        """
         self._setIndicator(indicator)
-        self.refineTolerance  = refineTolerance
-        self.coarsenTolerance = coarsenTolerance
-        self.markNeighbors    = markNeighbors
-        self.statistics       = statistics
+        self._refineTolerance  = refineTolerance  if callable(refineTolerance) else lambda : refineTolerance
+        self._coarsenTolerance = coarsenTolerance if callable(coarsenTolerance) else lambda : coarsenTolerance
+        self._markNeighbors    = markNeighbors
+        self._statistics       = statistics
 
     def _getIndicator(self):
         return self._indicator
@@ -91,8 +99,8 @@ class GridMarker(AdaptationMarkerBase):
 
         Args:
             indicator         A piecewise constant grid function (or ufl expression) holding the estimated error (or indicator value)
-            refineTolerance   An element E will be marked for refinement if indicator(E) > refineTolerance.
-            coarsenTolerance  An element E will be marked for coarsening if indicator(E) < coarsenTolerance.
+            refineTolerance   An element E will be marked for refinement if indicator(E) > refineTolerance (float or callable).
+            coarsenTolerance  An element E will be marked for coarsening if indicator(E) < coarsenTolerance (float or callable).
             minLevel          An element E will only be marked for coarsening if E.level > minLevel.
             maxLevel          An element E will only be marked for refinement if E.level < maxLevel.
             minVolume         An element E will only be marked for refinement if E.geometry.volume > minVolume.
@@ -107,29 +115,51 @@ class GridMarker(AdaptationMarkerBase):
         super().__init__(indicator, refineTolerance, coarsenTolerance,
                          markNeighbors, statistics)
 
-        self.minLevel  = minLevel
+        self._minLevel  = minLevel
         if maxLevel == None: maxLevel = -1
-        self.maxLevel  = maxLevel
-        self.minVolume = minVolume
-        self.maxVolume = maxVolume
-        self.gridView  = gridView
-        self.strategy  = strategy # default, doerfler
-        self.layered   = layered
+        self._maxLevel  = maxLevel
+        self._minVolume = minVolume
+        self._maxVolume = maxVolume
+        self._gridView  = gridView
+        self._strategy  = strategy # default, doerfler
+        self._layered   = layered
 
-    def __call__(self):
-        # get indicator grid function
-        indicatorGF = self.indicatorGF(self.gridView)
-        # obtain grid view
-        if self.gridView is None:
-            self.gridView = indicatorGF.gridView
+        if gridView is not None:
+            # make sure grid
+            GridMarker.checkGridView( self.gridView )
+
+        self._marking = self._doerflerMarking if self._strategy == 'doerfler' else self._defaultMarking
+
+    @staticmethod
+    def checkGridView( gridView ):
         try:
-            if not self.gridView.canAdapt:
+            if not gridView.canAdapt:
                 raise AttributeError("indicator function must be over grid view that supports adaptation")
         except AttributeError:
             raise AttributeError("indicator function must be over grid view that supports adaptation")
 
-        return self.gridView.mark(indicatorGF, self.refineTolerance, self.coarsenTolerance,
-                                  self.minLevel, self.maxLevel, self.minVolume, self.maxVolume, self.markNeighbors, self.statistics)
+    def __call__(self):
+        # get indicator grid function
+        indicatorGF = self.indicatorGF(self._gridView)
+        # obtain grid view
+        if self._gridView is None:
+            self._gridView = indicatorGF.gridView
+            GridMarker.checkGridView( self._gridView )
+
+        assert self._gridView is not None
+
+        # call marking routine
+        return self._marking( indicatorGF )
+
+    # call Doerfler marking
+    def _doerflerMarking(self, indicatorGF):
+        return self._gridView.doerflerMark(indicatorGF, self._refineTolerance(), self._maxLevel, self._layered)
+
+    # call default marking
+    def _defaultMarking(self, indicatorGF):
+        return self._gridView.mark(indicatorGF, self._refineTolerance(), self._coarsenTolerance(),
+                                   self._minLevel, self._maxLevel, self._minVolume, self._maxVolume,
+                                   self._markNeighbors, self._statistics)
 ### end GridMarker
 
 def _adaptArguments(first,*args):
@@ -168,7 +198,7 @@ def _adaptArguments(first,*args):
     assert adapt, "the grid views for all discrete functions need to support adaptivity"
     return hgrid,args
 
-def gridAdapt(marker, *args):
+def gridAdapt(marker, *args, loadBalance=True):
     """ Adapt the underlying hierarchical grid of the discrete function passed
         as arguments.
 
@@ -176,6 +206,7 @@ def gridAdapt(marker, *args):
         marker: A marking callable to mark the underlying hierarchical grid.
         *args: a single discrete function or a list or tuple of
         discrete functions which should be projected to the new grid.
+        loadBalance: A flag to disable the internal call to `fem.loadBalance`. By default this is enabled.
 
     Note: All discrete functions have to belong to the same hierarchical grid.
 
@@ -185,7 +216,7 @@ def gridAdapt(marker, *args):
     from dune.ufl import GridFunction
     # check if marker is discrete function and if so call with marker=None
     if marker is not None and (not callable(marker) or isinstance(marker, GridFunction)):
-        return adapt(None, marker, *args)
+        return gridAdapt(None, marker, *args)
 
     assert len(args) >= 1
     first = args[0]
@@ -203,12 +234,24 @@ def gridAdapt(marker, *args):
             # Python or C++ callable
             hgrid.mark( marker )
 
+    # get grid adaptation object
+    hgridadapt = module(hgrid).gridAdaptation(hgrid)
     # perform adaptation step
-    module(hgrid).gridAdaptation(hgrid).adapt(args)
+    hgridadapt.adapt(args)
+
+    # perform load balance if enabled
+    if loadBalance:
+        hgridadapt.loadBalance(args)
+
+###  end gridAdapt
 
 def adapt(marker, *args):
-    # deprecated("adapt: call gridAdapt instead!")
-    return gridAdapt( marker, *args )
+    ## enable when tutorial has been adapted
+    #deprecated("""adapt:
+    #call `gridAdapt( marker, [uh,...], loadBalance=False)`
+    #or replace both, adapt and loadBalance, with one
+    #call `gridAdapt( marker, [uh,...])` """)
+    return gridAdapt( marker, *args, loadBalance=False )
 
 
 def loadBalance(first, *args):
