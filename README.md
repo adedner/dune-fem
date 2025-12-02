@@ -11,7 +11,9 @@ to the DUNE-FEM [bugtracker][6] instead.
 Tutorial
 --------
 
-A [tutorial][18] for the recently added Python bindings can be found [here][18].
+There is a detailed [tutorial][18] available explaining the concepts
+and showing how to solve a number of problems using the Python bindings
+for dune-fem.
 
 Installation
 ------------
@@ -107,5 +109,5 @@ A detailed description of DUNE-FEM can be found in
  [15]: http://faculty.cse.tamu.edu/davis/suitesparse.html
  [16]: http://www.fz-juelich.de/jsc/sionlib
  [17]: http://icl.cs.utk.edu/papi/software/index.html
- [18]: https://dune-project.org/sphinx/content/sphinx/dune-fem/
+ [18]: https://dune-project.github.io/dune-fem-tutorial
  [19]: https://gitlab.dune-project.org/dune-fem/dune-fem/-/pipelines/
