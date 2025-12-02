@@ -75,7 +75,8 @@ namespace Dune
     interpolate ( const GridFunction &u, DiscreteFunction &v, PartitionSet< partitions > ps )
     {
       ConstLocalFunction< GridFunction > uLocal( u );
-      LocalContribution< DiscreteFunction, Assembly::Set > vLocal( v, /* communicate = */ false );
+      v.clear();
+      LocalContribution< DiscreteFunction, Assembly::Add > vLocal( v, /* communicate = */ false );
       LocalInterpolation< typename DiscreteFunction::DiscreteFunctionSpaceType >
         interpolation( v.space() );
 

@@ -12,14 +12,14 @@ namespace Dune
     // FiniteVolumeBasisFunctionSets
     // -----------------------------
 
-    template< class Entity, class Range >
+    template< class Entity, class Range, template <class,class> class BasisFunctionSet >
     class FiniteVolumeBasisFunctionSets
     {
-      typedef FiniteVolumeBasisFunctionSets< Entity, Range > ThisType;
+      typedef FiniteVolumeBasisFunctionSets< Entity, Range, BasisFunctionSet > ThisType;
 
     public:
       /** \copydoc Dune::Fem::BasisFunctionSets::BasisFunctionSetType */
-      typedef FiniteVolumeBasisFunctionSet< Entity, Range > BasisFunctionSetType;
+      typedef BasisFunctionSet< Entity, Range > BasisFunctionSetType;
       /** \copydoc Dune::Fem::BasisFunctionSets::EntityType */
       typedef typename BasisFunctionSetType::EntityType EntityType;
 

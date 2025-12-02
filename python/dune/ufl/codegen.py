@@ -448,6 +448,7 @@ class ModelClass():
         self.needMinCellEdgeLength = isPresent( 'MinCellEdgeLength' )
         self.needMaxFacetEdgeLength = isPresent( 'MaxFacetEdgeLength' )
         self.needMinFacetEdgeLength = isPresent( 'MinFacetEdgeLength' )
+        self.needDualFacetNormal    = isPresent( 'DualFacetNormal' )
 
         if self.needCellVolume or self.needMaxCellEdgeLength or self.needMinCellEdgeLength:
             self.needCellGeometry = True
@@ -456,6 +457,9 @@ class ModelClass():
 
         if self.needMaxCellEdgeLength or self.needMinCellEdgeLength or self.needMaxFacetEdgeLength or self.needMinFacetEdgeLength:
             self.includeFiles += ['dune/fempy/geometry/edgelength.hh']
+
+        if self.needDualFacetNormal:
+            self.includeFiles += ['dune/fempy/geometry/dualfacetnormal.hh']
 
         # print(f"Found geom = {self.needCellGeometry}, vol = {self.needCellVolume}, area = {self.needFacetArea}, maxEdge = {self.needMaxCellEdgeLength}, minEdge = {self.needMinCellEdgeLength}")
 
@@ -650,6 +654,9 @@ class ModelClass():
         # perhaps not optimal?
         maxEdge = 'maxCellEdgeLength()' if side is None else 'maxCellEdgeLength_[ static_cast< std::size_t >( ' + side + ' ) ]'
         return UnformattedExpression('auto', maxEdge)
+
+    def dualFacetNormal(self, x):
+        return UnformattedExpression('GlobalCoordinateType', 'Dune::Fem::dualFaceNormal( entity(), geometry(), ' + x + ' )')
 
     def intersection(self):
         return UnformattedExpression('auto', 'intersection_')

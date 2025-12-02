@@ -13,6 +13,14 @@ namespace Dune
     template< class FunctionSpace, class GridPart, int codim, class Storage >
     class FiniteVolumeSpace;
 
+    // VertexCenteredFiniteVolumeSpace
+    // -------------------------------
+
+    template< class FunctionSpace, class GridPart, int codim, class Storage >
+    class VertexCenteredFiniteVolumeSpace;
+
+
+
   } // namespace Fem
 
 } // namespace Dune
