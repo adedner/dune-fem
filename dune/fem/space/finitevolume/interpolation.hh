@@ -170,11 +170,12 @@ namespace Dune
         const auto& entity = localFunction.entity();
 
         const auto basisSet = space_.basisFunctionSet( entity );
+        const auto& geometry = basisSet.geometry();
         const int scalarSize = basisSet.scalarSize();
 
         const auto& blockMapper = space_.blockMapper();
 
-        const auto vol = localFunction.geometry().volume() / double(scalarSize);
+        const auto vol = geometry.volume() / double(scalarSize);
 
         std::vector< typename BlockMapperType::GlobalKeyType > entityDofs( scalarSize );
         blockMapper.map( entity, entityDofs );
