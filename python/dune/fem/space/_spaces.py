@@ -507,7 +507,9 @@ def lagrangehp(gridView, order=1, dimRange=None, field="double", storage=None,
 
 def finiteVolume(gridView, dimRange=None, field="double",
                  storage=None, scalar=False, dimrange=None,
-                 codegen='simple', **kwargs):
+                 codegen='simple',
+                 spacetype='FiniteVolumeSpace',
+                 **kwargs):
     """create a finite volume space
 
     A finite volume space is a discontinuous function space, using the element
@@ -533,7 +535,7 @@ def finiteVolume(gridView, dimRange=None, field="double",
 
     includes = ["dune/fem/space/finitevolume.hh" ] + gridView.cppIncludes
     functionSpaceType = "Dune::Fem::FunctionSpace< double, " + field + ", " + str(gridView.dimWorld) + ", " + str(dimRange) + " >"
-    typeName = "Dune::Fem::FiniteVolumeSpace< " + functionSpaceType +\
+    typeName = "Dune::Fem::" + spacetype + "< " + functionSpaceType +\
                ", Dune::FemPy::GridPart< " + gridView.cppTypeName + " >, 0 , " +\
                storageType(codegen) + ">"
 
@@ -542,6 +544,11 @@ def finiteVolume(gridView, dimRange=None, field="double",
             clone=_clone(_kwargs),
             ctorArgs=[gridView])
     return spc.as_ufl()
+
+
+def vertexCenteredFiniteVolume(*args, **kwargs):
+    return finiteVolume(*args, spacetype='VertexCenteredFiniteVolumeSpace', **kwargs)
+vertexCenteredFiniteVolume.__doc__ = finiteVolume.__doc__
 
 
 def p1Bubble(gridView, dimRange=None, field="double", order=1,
