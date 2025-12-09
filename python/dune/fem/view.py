@@ -88,6 +88,29 @@ def adaptiveLeafGridView(grid, *args, partition=Partitions.all, **kwargs):
       """)
     return setup(includes, typeName, pickler, ctorArgs=[grid])
 
+def dualGridView(hostGridView):
+    """create a dual grid view
+
+    Args:
+        hostGridView:        grid view to get dual view from
+
+    Returns:
+        GridView: the constructed dual grid view
+    """
+    includes = hostGridView.cppIncludes + ["dune/fem/gridpart/dualgridpart.hh"]
+
+    hostGridViewType = hostGridView.cppTypeName
+    hostGridPartType = "Dune::FemPy::GridPart< " + hostGridViewType + " >"
+    filterType = "Dune::Fem::SimpleFilter< " + hostGridPartType + " >"
+    gridPartName = "Dune::Fem::DualGridPart< " + hostGridPartType + " >"
+    typeName = gridPartName
+    constructor = Constructor(["pybind11::handle hostGridView"],
+                              ["return " + gridPartName + "( hostGridView );"],
+                              ["pybind11::keep_alive< 1, 2 >()"])
+    view = setup(includes, typeName, constructor, ctorArgs=[hostGridView])
+    view.hostCppTypeName = hostGridPartType
+    return view
+
 from dune.fem.utility.filteredgridview import interpolate
 def filteredGridView(hostGridView, contains, domainId, useFilteredIndexSet=False):
     """create a filtered grid view
