@@ -40,14 +40,22 @@ namespace Dune
     {
       typedef DualGridPart< HostGridPartImp > GridPartType;
 
-      //! type of twist utility
-      typedef MetaTwistUtility< typename HostGridPartImp :: TwistUtilityType >  TwistUtilityType;
-
       typedef HostGridPartImp  HostGridPartType;
 
       typedef typename HostGridPartType::ctype ctype;
       typedef Dune::PolygonGrid< ctype > GridType;
+
+      /** \brief The type of the corresponding TwistUtility */
+      typedef TwistUtility< GridType >  TwistUtilityType ;
+      //! type of twist utility
+      //typedef MetaTwistUtility< PolyTwistUtilityType >  TwistUtilityType;
+
       typedef typename GridType::LeafGridView LeafGridView;
+
+      //! default partition iterator type
+      static const PartitionIteratorType indexSetPartitionType = HostGridPartType::indexSetPartitionType;
+      static const InterfaceType indexSetInterfaceType = HostGridPartType::indexSetInterfaceType;
+
 
       template< int codim >
       struct Codim
@@ -95,9 +103,10 @@ namespace Dune
       typedef DualGridPart< HostGridPartImp > ThisType;
       typedef GridPartDefault< DualGridPartTraits< HostGridPartImp > > BaseType;
 
-      typedef DualGridPartTraits< HostGridPartImp > Traits;
 
     public:
+      typedef DualGridPartTraits< HostGridPartImp > Traits;
+
       typedef typename Traits::HostGridPartType HostGridPartType;
 
       typedef typename BaseType::GridType GridType;
@@ -108,7 +117,6 @@ namespace Dune
       typedef typename BaseType::CommunicationType CommunicationType;
 
       using BaseType::grid;
-
 
       // from dune-polygongrid
       typedef typename GridType::Mesh      Mesh;
