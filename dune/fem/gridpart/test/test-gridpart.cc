@@ -25,6 +25,7 @@
 #include <dune/fem/gridpart/filter/domainfilter.hh>
 #include <dune/fem/gridpart/filter/radialfilter.hh>
 #include <dune/fem/gridpart/filteredgridpart.hh>
+#include <dune/fem/gridpart/dualgridpart.hh>
 #include <dune/fem/gridpart/geogridpart.hh>
 #include <dune/fem/gridpart/geometrygridpart.hh>
 #include <dune/fem/misc/gridwidth.hh>
@@ -166,19 +167,35 @@ try
 {
   Dune::Fem::MPIManager::initialize( argc, argv );
 
+  typedef  typename Dune::Fem::TestGrid::HGridType GridType;
   // create grid
   auto& grid = Dune::Fem::TestGrid::grid();
+  /*
+  std::stringstream file;
+  file << "DGF" << std::endl;
+  file << "Interval" << std::endl;
+  file << "0 0" << std::endl;
+  file << "1 0.25" << std::endl;
+  file << "8 2" << std::endl;
+  file << "#" << std::endl;
+  //file << "Simplex" << std::endl;
+  //file << "#" << std::endl;
+
+  GridType* gridPtr = Dune::GridPtr< GridType > ( file ).release();
+  GridType& grid = *gridPtr;
+  */
 
   // refine grid
   const int step = Dune::Fem::TestGrid::refineStepsForHalf();
-  grid.globalRefine( 2*step );
-  grid.loadBalance();
+  //grid.globalRefine( 2*step );
+  //grid.loadBalance();
 
   typedef  typename Dune::Fem::TestGrid::HGridType GridType;
   // create grid part
   typedef Dune::Fem::LeafGridPart< GridType > HostGridPartType;
   HostGridPartType hostGridPart( grid );
 
+#if 0
   // AdaptiveLeafGridPart
   {
     std::cout << "*************************************" << std::endl;
@@ -205,7 +222,23 @@ try
 
     testAll( gridPart );
   }
+#endif
 
+  // DualGridPart
+  {
+    std::cout << "*******************************" << std::endl;
+    std::cout << "***      DualGridPart       ***"<< std::endl;
+    std::cout << "*******************************" << std::endl;
+
+    typedef Dune::Fem::AdaptiveLeafGridPart< GridType > AdvGridPartType;
+    typedef Dune::Fem::DualGridPart< AdvGridPartType > GridPartType;
+
+    GridPartType gridPart( grid );
+    testAll( gridPart );
+
+  }
+
+#if 0
   // GridPartAdapter
   {
     std::cout << "*******************************" << std::endl;
@@ -309,6 +342,7 @@ try
     std::cout << std::endl << "Testing FilteredGridPart with domain filter: allow non consecutive index set" << std::endl << std::endl;
     testFilteredGridPart< false, HostGridPartType, WrapperDomainFilterType >( hostGridPart, wrapperDomainFilter );
   }
+#endif
 
   return 0;
 }
