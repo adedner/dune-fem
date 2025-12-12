@@ -84,6 +84,8 @@ namespace Dune
 
         //typedef CachingQuadrature< GridPartType, 0, Capabilities::DefaultQuadrature< Space > :: template DefaultQuadratureTraits  > InteriorQuadratureType;
         //typedef CachingQuadrature< GridPartType, 1, Capabilities::DefaultQuadrature< Space > :: template DefaultQuadratureTraits  > SurfaceQuadratureType;
+
+
         typedef ElementQuadrature< GridPartType, 0, Capabilities::DefaultQuadrature< Space > :: template DefaultQuadratureTraits  > InteriorQuadratureType;
         typedef ElementQuadrature< GridPartType, 1, Capabilities::DefaultQuadrature< Space > :: template DefaultQuadratureTraits  > SurfaceQuadratureType;
         // typedef CachingQuadrature< GridPartType, 0, Dune::FemPy::FempyQuadratureTraits > InteriorQuadratureType;

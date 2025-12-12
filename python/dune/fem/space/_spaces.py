@@ -538,7 +538,7 @@ def finiteVolume(gridView, dimRange=None, field="double",
                storageType(codegen) + ">"
 
     spc = module(field, includes, typeName, storage=storage,
-            scalar=scalar, codegen=codegen,
+            scalar=scalar, codegen=False,
             clone=_clone(_kwargs),
             ctorArgs=[gridView])
     return spc.as_ufl()

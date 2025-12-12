@@ -12,14 +12,15 @@ def cppBool(value):
     return "true" if value else "false"
 
 
-def setup(includes, typeName, *args, ctorArgs):
+def setup(includes, typeName, *args, ctorArgs, register=True):
     postscript="""
 Dune::FemPy::registerGridView ( cls );
 """
     gv = dune.grid.grid_generator.viewModule(includes+["dune/fempy/py/gridview.hh"],
                   typeName, postscript, *args,
                   dynamicAttr=True).GridView(*ctorArgs)
-    gv._register()
+    if register:
+       gv._register()
     return gv
 
 def adaptiveLeafGridView(grid, *args, partition=Partitions.all, **kwargs):
@@ -105,10 +106,12 @@ def dualGridView(hostGridView):
     gridPartName = "Dune::Fem::DualGridPart< " + hostGridPartType + " >"
     typeName = gridPartName
     constructor = Constructor(["pybind11::handle hostGridView"],
-                              ["return " + gridPartName + "( hostGridView );"],
+                              [hostGridPartType + " &hostGridPart = Dune::FemPy::gridPart< " + hostGridViewType + " >( hostGridView );",
+                               "return " + gridPartName + "( hostGridPart );"],
                               ["pybind11::keep_alive< 1, 2 >()"])
-    view = setup(includes, typeName, constructor, ctorArgs=[hostGridView])
+    view = setup(includes, typeName, constructor, ctorArgs=[hostGridView], register=False)
     view.hostCppTypeName = hostGridPartType
+    # view.hierarchicalGrid = hostGridView.hierarchicalGrid
     return view
 
 from dune.fem.utility.filteredgridview import interpolate

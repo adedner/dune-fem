@@ -7,7 +7,8 @@
 #include <dune/fem/gridpart/common/entitysearch.hh>
 #include <dune/fem/gridpart/common/extendedentity.hh>
 #include <dune/fem/gridpart/common/gridpart.hh>
-#include <dune/fem/gridpart/common/metatwistutility.hh>
+#include <dune/fem/space/common/dofmanager.hh>
+
 //#include <dune/fem/gridpart/dualgridpart/capabilities.hh>
 
 #include <dune/polygongrid/grid.hh>
@@ -122,6 +123,10 @@ namespace Dune
       typedef typename GridType::Mesh      Mesh;
       typedef typename GridType::MeshType  MeshType;
 
+
+      typedef DofManager< GridType > DofManagerType;
+      typedef DofManager< typename HostGridPartType::GridType > HostDofManagerType;
+
       template< int codim >
       struct Codim
       : public BaseType::template Codim< codim >
@@ -131,14 +136,20 @@ namespace Dune
       : BaseType( *createGrid( HostGridPartType( og ) ) ),
         gridPtr_( &this->grid() ),
         hostGridPart_( og ),
-        leafGridView_( gridPtr_->leafGridView() )
+        leafGridView_( gridPtr_->leafGridView() ),
+        dofManager_( &DofManagerType :: instance( this->grid() ) ),
+        hostDofManager_( &HostDofManagerType :: instance( hostGridPart_.grid() ) ),
+        sequence_( -1 )
       {}
 
       explicit DualGridPart ( const DualGridPart &other )
       : BaseType( other ),
         gridPtr_( other.gridPtr_ ),
         hostGridPart_( other.hostGridPart() ),
-        leafGridView_( gridPtr_->leafGridView() )
+        leafGridView_( gridPtr_->leafGridView() ),
+        dofManager_( &DofManagerType :: instance( this->grid() ) ),
+        hostDofManager_( &HostDofManagerType :: instance( hostGridPart_.grid() ) ),
+        sequence_( -1 )
       {}
 
       DualGridPart& operator= ( const DualGridPart& other ) = default;
@@ -147,12 +158,27 @@ namespace Dune
       : BaseType( *createGrid( hostGridPart ) ),
         gridPtr_( &this->grid() ),
         hostGridPart_( hostGridPart ),
-        leafGridView_( gridPtr_->leafGridView() )
+        leafGridView_( gridPtr_->leafGridView() ),
+        dofManager_( &DofManagerType :: instance( this->grid() ) ),
+        hostDofManager_( &HostDofManagerType :: instance( hostGridPart_.grid() ) ),
+        sequence_( -1 )
       {
+      }
+
+      void update() const
+      {
+        const int hostSequence = hostDofManager_->sequence();
+        if( sequence_ != hostSequence )
+        {
+          gridPtr_->update( createMesh( hostGridPart_ ), __PolygonGrid::Dual );
+          dofManager_->resizeMemory();
+          sequence_ = hostSequence;
+        }
       }
 
       const IndexSetType &indexSet () const
       {
+        update();
         return leafGridView_.indexSet();
       }
 
@@ -160,6 +186,7 @@ namespace Dune
       typename Codim< codim >::IteratorType
       begin () const
       {
+        update();
         return leafGridView_.template begin< codim >();
       }
 
@@ -167,6 +194,7 @@ namespace Dune
       typename Codim< codim >::template Partition< pitype >::IteratorType
       begin () const
       {
+        update();
         return leafGridView_.template begin< codim, pitype >();
       }
 
@@ -191,11 +219,13 @@ namespace Dune
 
       IntersectionIteratorType ibegin ( const typename Codim< 0 >::EntityType &entity ) const
       {
+        update();
         return leafGridView_.ibegin( entity );
       }
 
       IntersectionIteratorType iend ( const typename Codim< 0 >::EntityType &entity ) const
       {
+        update();
         return leafGridView_.iend( entity );
       }
 
@@ -228,7 +258,7 @@ namespace Dune
       HostGridPartType &hostGridPart () { return hostGridPart_; }
 
     protected:
-      GridType* createGrid(const HostGridPartType& hostGridPart) const
+      std::shared_ptr< Mesh > createMesh(const HostGridPartType& hostGridPart) const
       {
         const int dim = HostGridPartType::dimension;
         const auto& hostIdxSet = hostGridPart.indexSet();
@@ -278,13 +308,21 @@ namespace Dune
         {
           std::copy( polygons[i].begin(), polygons[i].end(), polyvec[ i ].begin() );
         }
+        return std::make_shared< Mesh >(vertices, polyvec );
+      }
 
-        return new GridType( std::make_shared< Mesh >(vertices, polyvec ), __PolygonGrid::Dual );
+      GridType* createGrid(const HostGridPartType& hostGridPart) const
+      {
+        return new GridType( createMesh( hostGridPart ), __PolygonGrid::Dual );
       }
 
       std::shared_ptr< GridType > gridPtr_;
       HostGridPartType hostGridPart_;
       typename GridType::LeafGridView leafGridView_;
+
+      DofManagerType* dofManager_;
+      HostDofManagerType* hostDofManager_;
+      mutable int sequence_;
     };
 
 
