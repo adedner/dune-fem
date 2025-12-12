@@ -29,6 +29,7 @@
 #include <dune/fem/misc/threads/threaditerator.hh>
 #include <dune/fem/misc/threads/threadsafevalue.hh>
 #include <dune/fem/misc/hasboundaryintersection.hh>
+#include <dune/fem/misc/griddeclaration.hh>
 
 #include <dune/fem/operator/common/localmatrixcolumn.hh>
 #include <dune/fem/operator/common/localcontribution.hh>
@@ -81,10 +82,26 @@ namespace Dune
       struct DefaultGalerkinOperatorQuadratureSelector
       {
         typedef typename Space :: GridPartType GridPartType;
-        typedef CachingQuadrature< GridPartType, 0, Capabilities::DefaultQuadrature< Space > :: template DefaultQuadratureTraits  > InteriorQuadratureType;
-        typedef CachingQuadrature< GridPartType, 1, Capabilities::DefaultQuadrature< Space > :: template DefaultQuadratureTraits  > SurfaceQuadratureType;
-        // typedef CachingQuadrature< GridPartType, 0, Dune::FemPy::FempyQuadratureTraits > InteriorQuadratureType;
-        // typedef CachingQuadrature< GridPartType, 1, Dune::FemPy::FempyQuadratureTraits > SurfaceQuadratureType;
+        typedef typename GridPartType :: GridType  GridType;
+
+        template <class Grid>
+        struct AnotherQuadSelector
+        {
+          typedef CachingQuadrature< GridPartType, 0, Capabilities::DefaultQuadrature< Space > :: template DefaultQuadratureTraits  > InteriorQuadratureType;
+          typedef CachingQuadrature< GridPartType, 1, Capabilities::DefaultQuadrature< Space > :: template DefaultQuadratureTraits  > SurfaceQuadratureType;
+        };
+
+
+        template < class ct >
+        struct AnotherQuadSelector< Dune::PolygonGrid< ct > >
+        {
+          typedef ElementQuadrature< GridPartType, 0, Capabilities::DefaultQuadrature< Space > :: template DefaultQuadratureTraits  > InteriorQuadratureType;
+          typedef ElementQuadrature< GridPartType, 1, Capabilities::DefaultQuadrature< Space > :: template DefaultQuadratureTraits  > SurfaceQuadratureType;
+        };
+
+
+        typedef typename AnotherQuadSelector< GridType >::InteriorQuadratureType  InteriorQuadratureType;
+        typedef typename AnotherQuadSelector< GridType >::SurfaceQuadratureType   SurfaceQuadratureType;
       };
 
       // LocalGalerkinOperator
