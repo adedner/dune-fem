@@ -92,13 +92,14 @@ namespace Dune
         };
 
 
+#if HAVE_DUNE_POLYGONGRID
         template < class ct >
         struct AnotherQuadSelector< Dune::PolygonGrid< ct > >
         {
           typedef ElementQuadrature< GridPartType, 0, Capabilities::DefaultQuadrature< Space > :: template DefaultQuadratureTraits  > InteriorQuadratureType;
           typedef ElementQuadrature< GridPartType, 1, Capabilities::DefaultQuadrature< Space > :: template DefaultQuadratureTraits  > SurfaceQuadratureType;
         };
-
+#endif
 
         typedef typename AnotherQuadSelector< GridType >::InteriorQuadratureType  InteriorQuadratureType;
         typedef typename AnotherQuadSelector< GridType >::SurfaceQuadratureType   SurfaceQuadratureType;
