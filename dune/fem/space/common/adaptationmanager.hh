@@ -466,12 +466,13 @@ namespace Dune
         // get macro grid view
         MacroGridView macroView = grid_.levelGridView( 0 );
 
+        const int maxLevel = grid_.maxLevel();
         // make run through grid to project data
         MacroIterator endit  = macroView.template end<0,pitype>  ();
         for(MacroIterator it = macroView.template begin<0,pitype>();
             it != endit; ++it )
         {
-          hierarchicProlong( *it , rpOp_ );
+          hierarchicProlong( *it , rpOp_, maxLevel );
         }
       }
 
@@ -548,7 +549,7 @@ namespace Dune
     }
 
     template <class EntityType, class ProlongOperatorType >
-    void hierarchicProlong ( const EntityType &entity, ProlongOperatorType & prolop ) const
+    void hierarchicProlong ( const EntityType &entity, ProlongOperatorType & prolop, const int maxLevel ) const
     {
       typedef typename EntityType::HierarchicIterator HierarchicIterator;
 
@@ -561,7 +562,6 @@ namespace Dune
       // check partition type
       const bool isGhost = entity.partitionType() == GhostEntity ;
 
-      const int maxLevel = grid_.maxLevel();
       const HierarchicIterator endit = entity.hend( maxLevel );
       for( HierarchicIterator it = entity.hbegin( maxLevel ); it != endit; ++it )
       {

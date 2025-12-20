@@ -27,6 +27,7 @@ namespace Dune
 
         using container = std::vector< GlobalKey >;
 
+        typedef uint16_t SizeType;
       public:
         /** \brief global key type */
         using value_type = GlobalKey;
@@ -41,7 +42,9 @@ namespace Dune
          */
 
         /** \brief default constructor */
-        LocalDofStorage () : size_( 0 ), new_size_( 0 ) {}
+        LocalDofStorage () : size_( 0 ), new_size_( 0 ), active_( true )
+        {
+        }
 
         /** \} */
 
@@ -82,7 +85,7 @@ namespace Dune
          */
 
         /** \brief return number of dofs */
-        std::size_t size () const { return size_; }
+        SizeType size () const { return size_; }
 
         /** \brief enlarge dof vector
          *
@@ -92,17 +95,17 @@ namespace Dune
          *  \returns (incremented) dof number
          */
         template< class Function >
-        Function reserve ( std::size_t new_size, Function function )
+        Function reserve ( SizeType new_size, Function function )
         {
           // remember new size
           new_size_ = new_size;
 
           // enlarge dof vector if needed
-          const std::size_t old_size = dofs_.size();
+          const SizeType old_size = dofs_.size();
           if( old_size < new_size_ )
           {
             dofs_.resize( new_size );
-            for( std::size_t i = old_size; i < new_size; ++i )
+            for( SizeType i = old_size; i < new_size; ++i )
               dofs_[ i ] = function();
           }
 
@@ -111,18 +114,41 @@ namespace Dune
 
         /** \brief remove marked dofs from dof vector */
         template< class Function >
-        Function resize ( Function function )
+        void resize ( Function function )
         {
-          assert( new_size_ <= dofs_.size() );
-          size_ = new_size_;
+          if( size_ != new_size_ )
+          {
+            assert( new_size_ <= dofs_.size() );
+            size_ = new_size_;
 
-          const std::size_t holes = dofs_.size() - size_;
-          std::for_each( dofs_.rbegin(), dofs_.rbegin() + holes, function );
+            const SizeType holes = dofs_.size() - size_;
+            std::for_each( dofs_.rbegin(), dofs_.rbegin() + holes, function );
+
+            dofs_.resize( size_ );
+            // dofs_.shrink_to_fit();
+          }
+        }
+
+        /** \brief remove marked dofs from dof vector */
+        template< class Function >
+        void resize ( Function function, const bool activate )
+        {
+          resize( function );
+
+          // mark dofs as active/inactive for dof compression
+          active_ = activate;
+        }
+
+        /** \brief remove marked dofs from dof vector */
+        void clear ()
+        {
+          size_ = 0;
+          new_size_ = 0;
 
           dofs_.resize( size_ );
-          // dofs_.shrink_to_fit();
 
-          return std::move( function );
+          // mark dofs as inactive
+          active_ = false;
         }
 
         /** \} */
@@ -144,8 +170,8 @@ namespace Dune
         friend std::ostream &operator<< ( std::ostream &ostream, const LocalDofStorage &storage )
         {
           const auto &dofs = storage.dofs_;
-          const std::size_t size = dofs.size();
-          for( std::size_t i = 0; i < size; ++i )
+          const SizeType size = dofs.size();
+          for( SizeType i = 0; i < size; ++i )
             ostream << dofs[ i ] << " ";
           ostream << "[" << storage.size_  << "; " << storage.new_size_ << "]";
           return ostream;
@@ -153,8 +179,14 @@ namespace Dune
 
 #endif // #ifndef DOXYGEN
 
+        bool active () const { return active_; }
+        void deactivate ()   { active_ = false; }
+        void activate ()     { active_ = true; }
+
       private:
-        std::size_t size_, new_size_;
+        // 65536 dofs per element should be sufficient, otherwise increase
+        SizeType size_, new_size_;
+        bool active_; // flag for dof compression
         std::vector< GlobalKey > dofs_;
       };
 
