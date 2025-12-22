@@ -10,12 +10,17 @@ import ufl.finiteelement
 try:
     # check for ufl 2024 or newer
     from ufl import AbstractFiniteElement
+    try:
+        from ufl.finitelement import FiniteElement
+    except ImportError:
+        from .finiteelement import FiniteElement
+
     uflFE = lambda cell,order,rdim: (
-        ufl.finiteelement.FiniteElement(
-            "Lagrange", cell, order,
+            FiniteElement("Lagrange", cell, order,
             (rdim,) if rdim>0 else (),
             ufl.identity_pullback, ufl.H1)
         )
+
     # return ufl domain given a cell
     _uflDomain = lambda ucell,dimWorld : ufl.Mesh( uflFE(ucell, order=1, rdim=dimWorld) )
     _ufl2024AndNewer = True
@@ -30,6 +35,15 @@ except ImportError:
     # return ufl domain given a cell
     _uflDomain = lambda cell,dimWorld : ufl.domain.default_domain(cell)
     _ufl2024AndNewer = False
+
+try:
+    from ufl.algorithms.analysis import extract_arguments_and_coefficients
+except ImportError:
+    # ufl newer than 2024.2.0, use extract_terminals_with_domain
+    from ufl.algorithms.analysis import extract_terminals_with_domain
+    def extract_arguments_and_coefficients(a):
+        ret = extract_terminals_with_domain(a)
+        return ret[0], ret[1]
 
 from dune.deprecate import deprecated
 
@@ -558,14 +572,27 @@ def Parameter(domain, parameter, dimRange=None, count=None):
 from ufl.indexed import Indexed
 from ufl.index_combination_utils import create_slice_indices
 from ufl.core.multiindex import MultiIndex
+
 class GridIndexed(Indexed):
-    def __init__(self,gc,i):
-        self.scalar = True
+    @staticmethod
+    def convert2MultiIndex(gc, i):
+        if isinstance(i, MultiIndex):
+            return i
+
+        # if i is int convert to MultiIndex
         component = (i,)
         shape = gc.ufl_shape
         all_indices, _, _ = create_slice_indices(component, shape, gc.ufl_free_indices)
-        mi = MultiIndex(all_indices)
+        return MultiIndex(all_indices)
+
+    def __new__(cls, gc, i):
+        return Indexed.__new__(cls, gc, GridIndexed.convert2MultiIndex(gc, i ))
+
+    def __init__(self,gc, i):
+        self.scalar = True
+        mi = GridIndexed.convert2MultiIndex(gc, i)
         Indexed.__init__(self,gc,mi)
+
         if gc.gf.scalar:
             assert i==0
             self.__impl__ = gc.gf
@@ -580,7 +607,6 @@ class GridIndexed(Indexed):
     def plot(self,*args,**kwargs):
         from dune.fem.plotting import plotPointData
         plotPointData(self.__impl__,*args,**kwargs)
-
 
 
 class GridFunction(ufl.Coefficient):
@@ -736,7 +762,7 @@ class DirichletBC:
         else:
             self.ufl_value = value
         assert self.ufl_value.ufl_shape[0] == functionSpace.dimRange
-        args, coeff_ = ufl.algorithms.analysis.extract_arguments_and_coefficients(self.ufl_value)
+        args, coeff_ = extract_arguments_and_coefficients(self.ufl_value)
         assert len(args) == 0,\
         """
 Error: the ufl expression used for Dirichlet conditions should not use a `Test` or `Trial` function.
