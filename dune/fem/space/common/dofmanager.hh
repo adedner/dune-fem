@@ -712,7 +712,7 @@ namespace Dune
         remove_.apply( son );
 
         // resize memory if doResize is true
-        if ( doResize )
+        if constexpr ( doResize )
         {
           dm_.resizeMemory();
         }
@@ -732,7 +732,7 @@ namespace Dune
         insert_.apply( son );
 
         // resize memory if doResize is true
-        if ( doResize )
+        if constexpr ( doResize )
         {
           dm_.resizeMemory();
         }

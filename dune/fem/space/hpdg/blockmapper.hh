@@ -365,13 +365,21 @@ namespace Dune
           resize( dofs_ );
           resize( keys_, std::make_pair( key_, key_ ) );
 
-          resize( dofs_[ gridElement ], localKeys().blocks( gridElement.type(), key( gridElement ) ) );
+          auto& dofs = dofs_[ gridElement ];
+          resize( dofs, localKeys().blocks( gridElement.type(), key( gridElement ) ) );
         }
 
-        /** \brief mark DOFs for removal */
+        /** \brief mark entity DOFs for removal */
         void removeEntity ( const GridElementType &gridElement )
         {
           auto &dofs = dofs_[ gridElement ];
+          removeDofs( dofs );
+        }
+
+        /** \brief mark DOFs for removal */
+        void removeDofs( LocalDofStorageType& dofs )
+        {
+          dofs.deactivate();
 
           size_ = dofs.reserve( 0u, Reserve( size_ ) );
           Resize function( holes_ );
@@ -380,46 +388,33 @@ namespace Dune
         }
 
         /** \brief add DOFs for new element */
-        void insertNewEntity ( const GridElementType &gridElement )
+        std::size_t insertNewEntity ( const GridElementType &gridElement )
         {
+          auto& dofs = dofs_[ gridElement ];
+          resizeSimple( dofs, localKeys().blocks( gridElement.type(), key( gridElement ) ) );
+          dofs.activate();
+
+          // if entity is new also insert parent which is needed in the
+          // following prolongation call
           if( gridElement.isNew() )
           {
-            resize( dofs_[ gridElement ], localKeys().blocks( gridElement.type(), key( gridElement ) ) );
             assert( gridElement.hasFather() );
-            const GridElementType &father = gridElement.father();
-            insertNewEntity( father );
-            removeEntity( father );
+            // modify also parent element
+            const GridElementType &parent = gridElement.father();
+            auto& fDofs = dofs_[ parent ];
+            resizeSimple( fDofs, localKeys().blocks( parent.type(), key( parent ) ) );
+            // mark for removal
+            auto zero = [this]() { return 0; };
+            fDofs.reserve( 0u, zero );
+            fDofs.deactivate();
           }
-          else
-          {
-            auto &dofs = dofs_[ gridElement ];
-            resize( dofs, localKeys().blocks( gridElement.type(), key( gridElement ) ) );
-            for( auto dof : dofs )
-            {
-              auto iterator = std::lower_bound( holes_.begin(), holes_.end(), dof );
-              if( iterator != holes_.end() && *iterator == dof )
-                holes_.erase( iterator );
-            }
-          }
+
+          // return dof size of leaf element
+          return dofs.size();
         }
 
-        void resize ()
-        {
-          resize( dofs_ );
-          resize( keys_, std::make_pair( key_, key_ ) );
-
-          auto first = gridPart().template begin< 0, All_Partition >();
-          auto last = gridPart().template end< 0, All_Partition >();
-          for( ; first != last; ++first )
-          {
-            const ElementType &element = *first;
-            insertNewEntity( gridEntity( element ) );
-          }
-#if 0
-            auto &dofs = dofs_[ gridEntity( element ) ];
-            resize( dofs, localKeys().blocks( element.type(), key( element ) ) );
-#endif
-        }
+        /** \brief resize DOF mapping (generic adaptation only) */
+        void resize ();
 
         /** \brief compress DOF mapping */
         bool compress ();
@@ -482,6 +477,13 @@ namespace Dune
         {
           size_ = dofs.reserve( n, Reserve( size_ ) );
           dofs.resize( Resize( holes_ ) );
+        }
+
+        void resizeSimple ( LocalDofStorageType &dofs, SizeType n )
+        {
+          size_ = dofs.reserve( n, Reserve( size_ ) );
+          auto doNothing = []( const GlobalKeyType& dof ) {};
+          dofs.resize( doNothing );
         }
 
         template< class T >
@@ -559,6 +561,96 @@ namespace Dune
       };
 
 
+      // DiscontinuousGalerkinBlockMapper::resize
+      // ----------------------------------------
+
+      template< class GridPart, class LocalKeys >
+      void DiscontinuousGalerkinBlockMapper< GridPart, LocalKeys >::resize ()
+      {
+        // Note: this method is only called during generic adaptation (not callback adaptation)
+        // For this reasons we do some things differently here, e.g. the holes
+        // in the dof mapping are re-computed here, since the automatic
+        // insert/remove from callback does not seem to work in this case
+
+        resize( dofs_ );
+        resize( keys_, std::make_pair( key_, key_ ) );
+
+        // mark all dofs as inactive
+        for( auto &dofs : dofs_ )
+        {
+          dofs.deactivate();
+        }
+
+        // clear holes and insert only new elements
+        holes_.clear();
+
+        // mark all leaf entities and their parent entities
+        auto first = gridPart().template begin< 0, All_Partition >();
+        auto last = gridPart().template end< 0, All_Partition >();
+        std::size_t leafDofSize = 0;
+        for( ; first != last; ++first )
+        {
+          const ElementType &element = *first;
+          const auto& gridElement = gridEntity( element );
+          // inserts this entity and the parent if the current entity is new
+          // also the dofs are marked as active
+          // only add size of dofs on leaf element for hole computation
+          leafDofSize += insertNewEntity( gridEntity( element ) );
+        }
+
+        // mark all found dofs that are within the new size range
+        std::vector< int > found( leafDofSize, 0 );
+        std::size_t foundDofs = 0;
+
+        std::size_t maxDof = 0;
+        for( auto &dofs : dofs_ )
+        {
+          if( dofs.active() )
+          {
+            for( auto dof : dofs )
+            {
+              maxDof = std::max( maxDof, dof );
+              if( dof < leafDofSize )
+              {
+                // make sure this dof has not been found before
+                assert( ! found[ dof ] );
+                ++found[ dof ];
+                ++foundDofs;
+              }
+            }
+          }
+          else
+          {
+            // remove stored dofs completely
+            dofs.clear();
+          }
+        }
+
+        // store current size based on max used dof
+        size_ = maxDof + 1;
+
+        // recompute holes completely based on currently used dof indices
+        holes_.clear();
+
+        const std::size_t nHoles = leafDofSize - foundDofs ;
+        // if no holes are found we are done here
+        if( nHoles == 0 ) return ;
+
+        holes_.resize( nHoles, std::numeric_limits< std::size_t >::max() );
+        std::size_t hole = 0;
+        for( std::size_t i=0; i<leafDofSize; ++i )
+        {
+          if( ! found[ i ] ) // not found
+          {
+            holes_[ hole++ ] = i;
+          }
+          // make sure dofs are unique
+          assert( found[ i ] < 2 );
+        }
+        // make sure all entries have been filled
+        assert( hole == holes_.size() );
+        assert( std::is_sorted( holes_.begin(), holes_.end() ) );
+      }
 
       // DiscontinuousGalerkinBlockMapper::adapt
       // ---------------------------------------
@@ -574,7 +666,7 @@ namespace Dune
         origin.reserve( maxNumDofs() );
         destination.reserve( maxNumDofs() );
 
-        std::size_t count = 0;
+        std::size_t count = 0u;
 
         auto first = gridPart().template begin< 0, All_Partition >();
         auto last = gridPart().template end< 0, All_Partition >();
@@ -583,6 +675,7 @@ namespace Dune
           const ElementType &element = *first;
           const GridElementType &gridElement = gridEntity( element );
           auto &keys = keys_[ gridElement ];
+          // do nothing if polynomial order has not changed
           if( keys.first == keys.second )
             continue;
 
@@ -615,22 +708,62 @@ namespace Dune
       bool DiscontinuousGalerkinBlockMapper< GridPart, LocalKeys >::compress ()
       {
         // resize persistent containers
+        // get number of dofs after compress
         resize( dofs_ );
         resize( keys_, std::make_pair( key_, key_ ) );
 
-        for( auto &dofs : dofs_ )
-          dofs.resize( Resize( holes_ ) );
+        // resize all existing dofs
+        auto rsze = Resize( holes_ );
 
         // check if compress is necessary
         if( holes_.empty() )
         {
+          for( auto &dofs : dofs_ )
+          {
+            dofs.resize( rsze );
+          }
           indices_.clear();
           return false;
         }
+        else
+        {
+          for( auto &dofs : dofs_ )
+          {
+            dofs.resize( rsze, /* activate */ false );
+          }
+        }
 
-        // get number of dofs after compress
-        assert( size_ >= holes_.size() );
-        size_ -= holes_.size();
+        /*
+        std::cout << "holes = " << holes_.size() << std::endl;
+        for( size_t i=0; i<holes_.size(); ++i )
+        {
+          std::cout << "hole[ " << i << " ] = " << holes_[ i ] << std::endl;
+        }
+        */
+
+        // new size after compress
+        std::size_t newSize = 0u;
+
+        // replace all but markers currently used by default value
+        // this grid walk is also needed to mark current entity dofs as active
+        PersistentContainer< GridType, std::pair< KeyType, KeyType > > tmp( gridPart().grid(), 0, std::make_pair( key_, key_ ) );
+        const auto last = gridPart().template end< 0, All_Partition >();
+        for(auto first = gridPart().template begin< 0, All_Partition >(); first != last; ++first )
+        {
+          const ElementType &element = *first;
+          const GridElementType &gridElement = gridEntity( element );
+
+          // transfer keys
+          tmp[ gridElement ] = keys_[ gridElement ];
+
+          // mark dofs as active and compute size
+          auto &dofs = dofs_[ gridElement ];
+          dofs.activate();
+          newSize += dofs.size();
+        }
+
+        // update size
+        size_ = newSize;
 
         // remove trailing indices
         auto iterator = std::lower_bound( holes_.begin(), holes_.end(), size_ );
@@ -645,15 +778,19 @@ namespace Dune
         indices_.resize( holes_.size() );
         std::transform( holes_.begin(), holes_.end(), indices_.begin(), assign );
 
-        // update local dof storages
+        // update local dof storages and fill indices with old/new idx information
         std::size_t hole = 0u;
         for( auto &dofs : dofs_ )
         {
+          // skip inactive dofs here
+          if( ! dofs.active() ) continue ;
+
           for( auto &dof : dofs )
           {
             if( dof >= size_ )
             {
-              auto &indices = indices_.at( hole++ );
+              assert( hole < indices_.size() );
+              auto &indices = indices_[ hole++ ];
               indices.first = dof;
               dof = indices.second;
             }
@@ -663,20 +800,42 @@ namespace Dune
         assert( hole == holes_.size() );
         holes_.clear();
 
-        // replace all but markers currently used by default value
-        PersistentContainer< GridType, std::pair< KeyType, KeyType > > tmp( gridPart().grid(), 0, std::make_pair( key_, key_ ) );
-        auto first = gridPart().template begin< 0, All_Partition >();
-        auto last = gridPart().template end< 0, All_Partition >();
-        for( ; first != last; ++first )
-        {
-          const ElementType &element = *first;
-          const GridElementType &gridElement = gridEntity( element );
-          tmp[ gridElement ] = keys_[ gridElement ];
-        }
+        // store new keys
         keys_.swap( tmp );
 
+#ifndef NDEBUG
+        // ensure that dof mapping is consecutive
+        {
+          std::vector< int > found( size_, 0 );
+          const auto last = gridPart().template end< 0, All_Partition >();
+          for(auto first = gridPart().template begin< 0, All_Partition >(); first != last; ++first )
+          {
+            const auto& element = *first;
+            const auto &dofs = dofs_[ gridEntity( element ) ];
+            if( dofs.active() )
+            {
+              for( auto &dof : dofs )
+              {
+                assert( dof < size_ );
+                ++found[ dof ];
+              }
+            }
+            else
+            {
+              assert( dofs.size() == 0 );
+            }
+          }
+
+          for( const auto& item : found )
+          {
+            // should be found exactly once
+            assert( item == 1 );
+          }
+        }
+#endif
         return true;
       }
+
 
     } // namespace hpDG
 

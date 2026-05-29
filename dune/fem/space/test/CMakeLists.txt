@@ -27,6 +27,7 @@ dune_add_test( NAME lagrangeadapt_lfespace SOURCES lagrangeadapt.cc COMPILE_DEFI
 set( TESTS
   adapt
   padapt
+  padaptdg
 )
 
 set( EXPENSIVE_TESTS

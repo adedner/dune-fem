@@ -138,16 +138,12 @@ typedef CheckGridEnabled< MyGridType >::GridPartType GridPartType;
 //! type of the function space
 typedef FunctionSpace< double, double, MyGridType::dimensionworld, MyGridType::dimensionworld > FunctionSpaceType;
 
-//! type of the discrete function space our unkown belongs to
-// typedef LagrangeDiscreteFunctionSpace< FunctionSpaceType, GridPartType, polOrder > DiscreteFunctionSpaceType;
-//! type of the discrete function space our unkown belongs to
-//typedef LagrangeDiscreteFunctionSpace< FunctionSpaceType, GridPartType, polOrder > DiscreteFunctionSpaceType;
+#ifdef USE_DG_SPACE
+typedef hpDG::OrthogonalDiscontinuousGalerkinSpace< FunctionSpaceType,
+                                    GridPartType, polOrder >  DiscreteFunctionSpaceType;
+#else
 typedef Fem :: PAdaptiveLagrangeSpace< FunctionSpaceType, GridPartType, polOrder > DiscreteFunctionSpaceType;
-//typedef Fem :: PAdaptiveDGSpace< FunctionSpaceType, GridPartType, polOrder > DiscreteFunctionSpaceType;
-
-//typedef hpDG::OrthogonalDiscontinuousGalerkinSpace< FunctionSpaceType,
-//                                    GridPartType, polOrder, true >  DiscreteFunctionSpaceType;
-
+#endif
 
 
 //! type of the discrete function we are using
