@@ -16,6 +16,8 @@
 //#define USECOMBINEDSPACE
 #endif
 
+#undef CONFORMING_SPACE
+
 #include <config.h>
 
 #include <iostream>
@@ -32,6 +34,7 @@
 #include <dune/fem/space/lagrange.hh>
 #include <dune/fem/space/padaptivespace.hh>
 #include <dune/fem/space/padaptivespace.hh>
+#include <dune/fem/space/hpdg/orthogonal.hh>
 
 #ifdef HAVE_DUNE_ISTL
 #include <dune/fem/function/blockvectorfunction.hh>
@@ -194,7 +197,9 @@ double algorithm ( HGridType &grid, const int step )
   // use a scalar function space
   typedef Dune::Fem::FunctionSpace< double, double, HGridType :: dimensionworld, 1 > SingleFunctionSpace;
 
-  typedef Dune::Fem::DiscontinuousGalerkinSpace< SingleFunctionSpace, GridPartType, POLORDER > DGSpaceType;
+  //typedef Dune::Fem::DiscontinuousGalerkinSpace< SingleFunctionSpace, GridPartType, POLORDER > DGSpaceType;
+  typedef Dune::Fem::hpDG::OrthogonalDiscontinuousGalerkinSpace< SingleFunctionSpace,
+                                    GridPartType, POLORDER >  DGSpaceType;
 
   typedef typename
   std::conditional< combinedSpace,
@@ -276,7 +281,7 @@ try
   Dune::Fem::Parameter::append( "fem.io.outputformat", "vtk-cell" );
   Dune::Fem::Parameter::append( "fem.io.partitioning", "rank" );
   Dune::Fem::Parameter::append( "fem.loadbalancing.step", "1" );
-  Dune::Fem::Parameter::append( "fem.adaptation.method", "callback" );
+  Dune::Fem::Parameter::append( "fem.adaptation.method", "generic" );
 
   // type of hierarchical grid
   typedef Dune :: GridSelector :: GridType  HGridType ;
@@ -285,10 +290,15 @@ try
   std::stringstream dgf;
   dgf << "DGF" << std::endl;
   dgf << "INTERVAL" << std::endl;
-  dgf << "0 0 0" << std::endl;
-  dgf << "1 1 1" << std::endl;
-  const int nxcells = 2;
-  dgf << nxcells << " " << nxcells << " " << nxcells << std::endl;
+
+  dgf << "0 0" << std::endl;
+  dgf << "1 1" << std::endl;
+  //dgf << "0 0 0" << std::endl;
+  //dgf << "1 1 1" << std::endl;
+  const int nxcells = 4;
+  dgf << nxcells << " " << nxcells << std::endl;
+  ///dgf << nxcells << " " << nxcells << " " << nxcells << std::endl;
+  //
   dgf << "#" << std::endl;
 
   // the method rank and size from MPIManager are static
