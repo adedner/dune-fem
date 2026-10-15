@@ -3,6 +3,8 @@
 
 #include <limits>
 
+#include <dune/common/exceptions.hh>
+
 #include <dune/fem/function/common/scalarproducts.hh>
 #include <dune/fem/operator/common/operator.hh>
 #include <dune/fem/io/parameter.hh>
@@ -100,9 +102,10 @@ namespace Dune
        */
       static const bool preconditioningAvailable = false;
 
-      typedef typename BaseType :: SolverDiscreteFunctionType    PetscDiscreteFunctionType;
-      typedef typename BaseType :: OperatorType                  OperatorType;
-      typedef typename BaseType :: PreconditionerType            PreconditionerType;
+      typedef typename BaseType :: SolverDiscreteFunctionType        PetscDiscreteFunctionType;
+      typedef typename BaseType :: SolverDiscreteFunctionSpaceType   SolverDiscreteFunctionSpaceType;
+      typedef typename BaseType :: OperatorType                      OperatorType;
+      typedef typename BaseType :: PreconditionerType                PreconditionerType;
 
       PetscInverseOperator ( const PetscSolverParameter &parameter = PetscSolverParameter(Parameter::container()) )
       : BaseType( parameter )
@@ -359,12 +362,22 @@ namespace Dune
             break;
           case SolverParameter::sor:
             ::Dune::Petsc::PCSetType( pc, PCSOR );
+            if( std::abs( omega - 1.0 ) > 1e-14 )
+            {
+              DUNE_THROW(InvalidStateException,"PETSc::SOR can only handle relaxation=1.0!");
+            }
+            // this fails with a PETSc Error if omega is not 1.0
             ::Dune::Petsc::PCSORSetOmega( pc, omega );
             break;
           case SolverParameter::ssor:
             ::Dune::Petsc::PCSetType( pc, PCSOR );
             // set symmetric version
             ::Dune::Petsc::PCSORSetSymmetric( pc, SOR_LOCAL_SYMMETRIC_SWEEP );
+            if( std::abs( omega - 1.0 ) > 1e-14 )
+            {
+              DUNE_THROW(InvalidStateException,"PETSc::SOR can only handle relaxation=1.0!");
+            }
+            // this fails with a PETSc Error if omega is not 1.0
             ::Dune::Petsc::PCSORSetOmega( pc, omega );
             break;
           case SolverParameter::jacobi:
@@ -532,6 +545,24 @@ namespace Dune
       }
 
     protected:
+      //! overloaded allocateMemory to create temporary df with backend of assembled operator
+      void allocateMemory( const SolverDiscreteFunctionSpaceType& uSpace,
+                           const SolverDiscreteFunctionSpaceType& wSpace ) const
+      {
+        typedef PetscDiscreteFunctionType SolverDiscreteFunctionType;
+        if( ! this->rhs_ )
+        {
+          // create temporary df with backend of assembled operator
+          this->rhs_.reset( new SolverDiscreteFunctionType( "InvOp::rhs", uSpace, assembledOperator_->backend() ) );
+        }
+
+        if( ! this->x_ )
+        {
+          // create temporary df with backend of assembled operator
+          this->x_.reset( new SolverDiscreteFunctionType( "InvOp::x", wSpace, assembledOperator_->backend() ) );
+        }
+      }
+
       KSP & ksp () { assert( ksp_ ); return *ksp_; }
 
       using BaseType :: assembledOperator_;
